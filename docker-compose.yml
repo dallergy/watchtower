@@ -1,5 +1,3 @@
-version: '3.7'
-
 services:
   watchtower:
     container_name: watchtower
@@ -13,7 +11,7 @@ services:
     command: --interval 10 --http-api-metrics --http-api-token demotoken --debug prometheus grafana parent child
   prometheus:
     container_name: prometheus
-    image: prom/prometheus
+    image: prom/prometheus:v2.55.1
     volumes:
       - ./prometheus/:/etc/prometheus/
       - prometheus:/prometheus/
@@ -21,7 +19,7 @@ services:
       - 9090:9090
   grafana:
     container_name: grafana
-    image: grafana/grafana
+    image: grafana/grafana:11.4.0
     ports:
       - 3000:3000
     environment:
@@ -30,10 +28,10 @@ services:
       - grafana:/var/lib/grafana
       - ./grafana:/etc/grafana/provisioning
   parent:
-    image: nginx
+    image: nginx:1.27-alpine
     container_name: parent
   child:
-    image: nginx:alpine
+    image: nginx:1.27-alpine
     labels:
       com.centurylinklabs.watchtower.depends-on: parent
     container_name: child

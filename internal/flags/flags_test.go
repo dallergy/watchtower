@@ -178,6 +178,8 @@ func TestProcessFlagAliasesLogLevelFromEnvironment(t *testing.T) {
 }
 
 func TestLogFormatFlag(t *testing.T) {
+	_ = os.Unsetenv("NO_COLOR")
+
 	cmd := new(cobra.Command)
 
 	SetDefaults()

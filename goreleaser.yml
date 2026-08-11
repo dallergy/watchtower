@@ -1,86 +1,77 @@
-build:
-  main: ./main.go
-  binary: watchtower
-  goos:
-    - linux
-    - windows
-  goarch:
-    - amd64
-    - 386
-    - arm
-    - arm64
-  ldflags:
-    - -s -w -X github.com/containrrr/watchtower/internal/meta.Version={{.Version}}
+version: 2
+
+builds:
+  - main: ./main.go
+    binary: watchtower
+    goos:
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - "386"
+      - arm
+      - arm64
+    ldflags:
+      - -s -w -X github.com/containrrr/watchtower/internal/meta.Version={{.Version}}
+
 archives:
-  - 
-    name_template: "{{.ProjectName}}_{{.Os}}_{{.Arch}}"
+  - name_template: "{{.ProjectName}}_{{.Os}}_{{.Arch}}"
     format: tar.gz
-    replacements:
-      arm: armhf
-      arm64: arm64v8
-      amd64: amd64
-      386: 386
-      darwin: macOS
-      linux: linux
     format_overrides:
       - goos: windows
         format: zip
     files:
       - LICENSE.md
+
 dockers:
-  -
-    use_buildx: true
-    build_flag_templates: [ "--platform=linux/amd64" ]
+  - use: buildx
     goos: linux
     goarch: amd64
-    goarm: ''
     dockerfile: dockerfiles/Dockerfile
     image_templates:
-      - containrrr/watchtower:amd64-{{ .Version }}
-      - containrrr/watchtower:amd64-latest
-      - ghcr.io/containrrr/watchtower:amd64-{{ .Version }}
-      - ghcr.io/containrrr/watchtower:amd64-latest
+      - "ghcr.io/dallergy/watchtower:amd64-{{ .Version }}"
+      - "ghcr.io/dallergy/watchtower:amd64-latest"
     binaries:
       - watchtower
-  - 
-    use_buildx: true
-    build_flag_templates: [ "--platform=linux/386" ]
+  - use: buildx
     goos: linux
-    goarch: 386
-    goarm: ''
+    goarch: "386"
     dockerfile: dockerfiles/Dockerfile
     image_templates:
-      - containrrr/watchtower:i386-{{ .Version }}
-      - containrrr/watchtower:i386-latest
-      - ghcr.io/containrrr/watchtower:i386-{{ .Version }}
-      - ghcr.io/containrrr/watchtower:i386-latest
+      - "ghcr.io/dallergy/watchtower:i386-{{ .Version }}"
+      - "ghcr.io/dallergy/watchtower:i386-latest"
     binaries:
       - watchtower
-  - 
-    use_buildx: true
-    build_flag_templates: [ "--platform=linux/arm/v6" ]
+  - use: buildx
     goos: linux
     goarch: arm
-    goarm: 6
+    goarm: "6"
     dockerfile: dockerfiles/Dockerfile
     image_templates:
-      - containrrr/watchtower:armhf-{{ .Version }}
-      - containrrr/watchtower:armhf-latest
-      - ghcr.io/containrrr/watchtower:armhf-{{ .Version }}
-      - ghcr.io/containrrr/watchtower:armhf-latest
+      - "ghcr.io/dallergy/watchtower:armhf-{{ .Version }}"
+      - "ghcr.io/dallergy/watchtower:armhf-latest"
     binaries:
       - watchtower
-  - 
-    use_buildx: true
-    build_flag_templates: [ "--platform=linux/arm64/v8" ]
+  - use: buildx
     goos: linux
     goarch: arm64
-    goarm: ''
     dockerfile: dockerfiles/Dockerfile
     image_templates:
-      - containrrr/watchtower:arm64v8-{{ .Version }}
-      - containrrr/watchtower:arm64v8-latest
-      - ghcr.io/containrrr/watchtower:arm64v8-{{ .Version }}
-      - ghcr.io/containrrr/watchtower:arm64v8-latest
+      - "ghcr.io/dallergy/watchtower:arm64v8-{{ .Version }}"
+      - "ghcr.io/dallergy/watchtower:arm64v8-latest"
     binaries:
       - watchtower
+
+docker_manifests:
+  - name_template: "ghcr.io/dallergy/watchtower:{{ .Version }}"
+    image_templates:
+      - "ghcr.io/dallergy/watchtower:amd64-{{ .Version }}"
+      - "ghcr.io/dallergy/watchtower:i386-{{ .Version }}"
+      - "ghcr.io/dallergy/watchtower:armhf-{{ .Version }}"
+      - "ghcr.io/dallergy/watchtower:arm64v8-{{ .Version }}"
+  - name_template: "ghcr.io/dallergy/watchtower:latest"
+    image_templates:
+      - "ghcr.io/dallergy/watchtower:amd64-latest"
+      - "ghcr.io/dallergy/watchtower:i386-latest"
+      - "ghcr.io/dallergy/watchtower:armhf-latest"
+      - "ghcr.io/dallergy/watchtower:arm64v8-latest"
