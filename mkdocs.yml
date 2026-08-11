@@ -1,6 +1,6 @@
 site_name: Watchtower
-site_url: https://containrrr.dev/watchtower/
-repo_url: https://github.com/containrrr/watchtower/
+site_url: https://github.com/dallergy/watchtower/
+repo_url: https://github.com/dallergy/watchtower/
 edit_uri: edit/main/docs/
 theme:
   name: 'material'
@@ -29,7 +29,7 @@ markdown_extensions:
     - pymdownx.magiclink:
         repo_url_shortener: True
         provider: github
-        user: containrrr
+        user: dallergy
         repo: watchtower
     - pymdownx.saneheaders
     - pymdownx.tabbed:
