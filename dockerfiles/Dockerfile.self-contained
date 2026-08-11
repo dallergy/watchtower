@@ -4,8 +4,9 @@
 
 FROM golang:alpine as builder
 
-# use version (for example "v0.3.3") or "main"
+# use version (for example "v1.7.2") or "main"
 ARG WATCHTOWER_VERSION=main
+ARG WATCHTOWER_REPO=https://github.com/dallergy/watchtower.git
 
 RUN apk add --no-cache \
     alpine-sdk \
@@ -13,7 +14,7 @@ RUN apk add --no-cache \
     git \
     tzdata
 
-RUN git clone --branch "${WATCHTOWER_VERSION}" https://github.com/containrrr/watchtower.git
+RUN git clone --branch "${WATCHTOWER_VERSION}" "${WATCHTOWER_REPO}"
 
 RUN \
   cd watchtower && \

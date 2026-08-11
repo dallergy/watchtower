@@ -32,7 +32,29 @@ Watchtower will pull down your new image, gracefully shut down your existing con
 $ docker run --detach \
     --name watchtower \
     --volume /var/run/docker.sock:/var/run/docker.sock \
-    ghcr.io/dallergy/watchtower
+    ghcr.io/dallergy/watchtower:latest
+```
+
+### Image availability
+
+Container images are published to GitHub Container Registry on every push to `main` and on version tags.
+
+If you see `error from registry: denied` when pulling the image, the GHCR package is likely still **private**. To make it publicly pullable:
+
+1. Open [github.com/users/dallergy/packages/container/watchtower](https://github.com/users/dallergy/packages/container/package/watchtower)
+2. Go to **Package settings**
+3. Change visibility to **Public**
+
+Until the package is public, you can build and run locally instead:
+
+```
+$ git clone https://github.com/dallergy/watchtower.git
+$ cd watchtower
+$ docker build -f dockerfiles/Dockerfile.dev-self-contained -t watchtower .
+$ docker run --detach \
+    --name watchtower \
+    --volume /var/run/docker.sock:/var/run/docker.sock \
+    watchtower
 ```
 
 Watchtower is intended to be used in homelabs, media centers, local dev environments, and similar. We do **not** recommend using Watchtower in a commercial or production environment. If that is you, you should be looking into using Kubernetes. If that feels like too big a step for you, please look into solutions like [MicroK8s](https://microk8s.io/) and [k3s](https://k3s.io/) that take away a lot of the toil of running a Kubernetes cluster. 
