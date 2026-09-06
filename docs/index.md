@@ -29,14 +29,14 @@
   <a href="https://github.com/containrrr/watchtower/#contributors">
     <img alt="All Contributors" src="https://img.shields.io/github/all-contributors/containrrr/watchtower" />
   </a>
-  <a href="https://hub.docker.com/r/shounak9642/watchtower">
-    <img alt="Pulls from DockerHub" src="https://img.shields.io/docker/pulls/shounak9642/watchtower.svg" />
+  <a href="https://hub.docker.com/r/shounak6942/watchtower">
+    <img alt="Pulls from DockerHub" src="https://img.shields.io/docker/pulls/shounak6942/watchtower.svg" />
   </a>
 </p>
 
 !!! note "Community-maintained fork"
     The original [containrrr/watchtower](https://github.com/containrrr/watchtower) project is no longer maintained.
-    This fork is actively maintained at [dallergy/watchtower](https://github.com/dallergy/watchtower) and published to Docker Hub as `shounak9642/watchtower`.
+    This fork is actively maintained at [dallergy/watchtower](https://github.com/dallergy/watchtower) and published to Docker Hub as `shounak6942/watchtower`.
 
 ## Quick Start
 
@@ -51,7 +51,7 @@ the following command:
     $ docker run -d \
     --name watchtower \
     -v /var/run/docker.sock:/var/run/docker.sock \
-    shounak9642/watchtower
+    shounak6942/watchtower
     ```
 
 === "docker-compose.yml"
@@ -60,7 +60,7 @@ the following command:
     version: "3"
     services:
       watchtower:
-        image: shounak9642/watchtower
+        image: shounak6942/watchtower
         volumes:
           - /var/run/docker.sock:/var/run/docker.sock
     ```

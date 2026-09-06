@@ -29,8 +29,8 @@ dockers:
     goarch: amd64
     dockerfile: dockerfiles/Dockerfile
     image_templates:
-      - "shounak9642/watchtower:amd64-{{ .Version }}"
-      - "shounak9642/watchtower:amd64-latest"
+      - "shounak6942/watchtower:amd64-{{ .Version }}"
+      - "shounak6942/watchtower:amd64-latest"
       - "ghcr.io/dallergy/watchtower:amd64-{{ .Version }}"
       - "ghcr.io/dallergy/watchtower:amd64-latest"
     binaries:
@@ -40,8 +40,8 @@ dockers:
     goarch: "386"
     dockerfile: dockerfiles/Dockerfile
     image_templates:
-      - "shounak9642/watchtower:i386-{{ .Version }}"
-      - "shounak9642/watchtower:i386-latest"
+      - "shounak6942/watchtower:i386-{{ .Version }}"
+      - "shounak6942/watchtower:i386-latest"
       - "ghcr.io/dallergy/watchtower:i386-{{ .Version }}"
       - "ghcr.io/dallergy/watchtower:i386-latest"
     binaries:
@@ -52,8 +52,8 @@ dockers:
     goarm: "6"
     dockerfile: dockerfiles/Dockerfile
     image_templates:
-      - "shounak9642/watchtower:armhf-{{ .Version }}"
-      - "shounak9642/watchtower:armhf-latest"
+      - "shounak6942/watchtower:armhf-{{ .Version }}"
+      - "shounak6942/watchtower:armhf-latest"
       - "ghcr.io/dallergy/watchtower:armhf-{{ .Version }}"
       - "ghcr.io/dallergy/watchtower:armhf-latest"
     binaries:
@@ -63,26 +63,26 @@ dockers:
     goarch: arm64
     dockerfile: dockerfiles/Dockerfile
     image_templates:
-      - "shounak9642/watchtower:arm64v8-{{ .Version }}"
-      - "shounak9642/watchtower:arm64v8-latest"
+      - "shounak6942/watchtower:arm64v8-{{ .Version }}"
+      - "shounak6942/watchtower:arm64v8-latest"
       - "ghcr.io/dallergy/watchtower:arm64v8-{{ .Version }}"
       - "ghcr.io/dallergy/watchtower:arm64v8-latest"
     binaries:
       - watchtower
 
 docker_manifests:
-  - name_template: "shounak9642/watchtower:{{ .Version }}"
+  - name_template: "shounak6942/watchtower:{{ .Version }}"
     image_templates:
-      - "shounak9642/watchtower:amd64-{{ .Version }}"
-      - "shounak9642/watchtower:i386-{{ .Version }}"
-      - "shounak9642/watchtower:armhf-{{ .Version }}"
-      - "shounak9642/watchtower:arm64v8-{{ .Version }}"
-  - name_template: "shounak9642/watchtower:latest"
+      - "shounak6942/watchtower:amd64-{{ .Version }}"
+      - "shounak6942/watchtower:i386-{{ .Version }}"
+      - "shounak6942/watchtower:armhf-{{ .Version }}"
+      - "shounak6942/watchtower:arm64v8-{{ .Version }}"
+  - name_template: "shounak6942/watchtower:latest"
     image_templates:
-      - "shounak9642/watchtower:amd64-latest"
-      - "shounak9642/watchtower:i386-latest"
-      - "shounak9642/watchtower:armhf-latest"
-      - "shounak9642/watchtower:arm64v8-latest"
+      - "shounak6942/watchtower:amd64-latest"
+      - "shounak6942/watchtower:i386-latest"
+      - "shounak6942/watchtower:armhf-latest"
+      - "shounak6942/watchtower:arm64v8-latest"
   - name_template: "ghcr.io/dallergy/watchtower:{{ .Version }}"
     image_templates:
       - "ghcr.io/dallergy/watchtower:amd64-{{ .Version }}"

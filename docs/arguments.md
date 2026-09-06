@@ -7,7 +7,7 @@ launching watchtower.
 $ docker run -d \
     --name watchtower \
     -v /var/run/docker.sock:/var/run/docker.sock \
-    shounak9642/watchtower \
+    shounak6942/watchtower \
     nginx redis
 ```
 
@@ -18,7 +18,7 @@ the watchtower container after its execution.
 ```bash
 $ docker run --rm \
     -v /var/run/docker.sock:/var/run/docker.sock \
-    shounak9642/watchtower \
+    shounak6942/watchtower \
     --run-once \
     nginx redis
 ```
@@ -166,13 +166,13 @@ Environment Variable: DOCKER_HOST
 ```
 
 ## Docker API version
-The API version to use by the Docker client for connecting to the Docker daemon. The minimum supported version is 1.24.
+The API version to use by the Docker client for connecting to the Docker daemon. The minimum supported version is 1.40.
 
 ```text
             Argument: --api-version, -a
 Environment Variable: DOCKER_API_VERSION
                 Type: String
-             Default: "1.24"
+             Default: "1.40"
 ```
 
 ## Include restarting

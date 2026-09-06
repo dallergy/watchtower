@@ -1,4 +1,4 @@
-Watchtower is itself packaged as a Docker container so installation is as simple as pulling the `shounak9642/watchtower` image. If you are using ARM based architecture, pull the appropriate `shounak9642/watchtower:armhf-<tag>` image from the [containrrr Docker Hub](https://hub.docker.com/r/shounak9642/watchtower/tags/).
+Watchtower is itself packaged as a Docker container so installation is as simple as pulling the `shounak6942/watchtower` image. If you are using ARM based architecture, pull the appropriate `shounak6942/watchtower:armhf-<tag>` image from the [containrrr Docker Hub](https://hub.docker.com/r/shounak6942/watchtower/tags/).
 
 Since the watchtower code needs to interact with the Docker API in order to monitor the running containers, you need to mount _/var/run/docker.sock_ into the container with the `-v` flag when you run it.
 
@@ -8,7 +8,7 @@ Run the `watchtower` container with the following command:
 docker run -d \
   --name watchtower \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  shounak9642/watchtower
+  shounak6942/watchtower
 ```
 
 If pulling images from private Docker registries, supply registry authentication credentials with the environment variables `REPO_USER` and `REPO_PASS`
@@ -22,7 +22,7 @@ docker run -d \
   -e REPO_USER=username \
   -e REPO_PASS=password \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  shounak9642/watchtower container_to_watch --debug
+  shounak6942/watchtower container_to_watch --debug
 ```
 
 Also check out [this Stack Overflow answer](https://stackoverflow.com/a/30494145/7872793) for more options on how to pass environment variables.
@@ -34,7 +34,7 @@ docker run -d \
   --name watchtower \
   -v $HOME/.docker/config.json:/config.json \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  shounak9642/watchtower container_to_watch --debug
+  shounak6942/watchtower container_to_watch --debug
 ```
 
 !!! note "Changes to config.json while running"
@@ -60,7 +60,7 @@ services:
       - "443:3443"
       - "80:3080"
   watchtower:
-    image: shounak9642/watchtower
+    image: shounak6942/watchtower
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /root/.docker/config.json:/config.json

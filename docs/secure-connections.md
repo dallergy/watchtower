@@ -10,5 +10,5 @@ docker run -d \
   -e DOCKER_HOST=$DOCKER_HOST \
   -e DOCKER_CERT_PATH=/etc/ssl/docker \
   -v $DOCKER_CERT_PATH:/etc/ssl/docker \
-  shounak9642/watchtower --tlsverify
+  shounak6942/watchtower --tlsverify
 ```

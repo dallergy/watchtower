@@ -2,7 +2,7 @@
 
   ### Community-maintained fork
   The original [containrrr/watchtower](https://github.com/containrrr/watchtower) project is no longer maintained.
-  This fork is actively maintained by [dallergy](https://github.com/dallergy) and published to Docker Hub as [shounak9642/watchtower](https://hub.docker.com/r/shounak9642/watchtower).
+  This fork is actively maintained by [dallergy](https://github.com/dallergy) and published to Docker Hub as [shounak6942/watchtower](https://hub.docker.com/r/shounak6942/watchtower).
 
   ---
   
@@ -32,7 +32,7 @@ Watchtower will pull down your new image, gracefully shut down your existing con
 $ docker run --detach \
     --name watchtower \
     --volume /var/run/docker.sock:/var/run/docker.sock \
-    shounak9642/watchtower:latest
+    shounak6942/watchtower:latest
 ```
 
 ### Image availability
@@ -41,10 +41,10 @@ Container images are published to **Docker Hub** and **GitHub Container Registry
 
 | Registry | Image | Tags |
 |----------|-------|------|
-| Docker Hub | `shounak9642/watchtower` | `latest`, `latest-dev`, version tags |
+| Docker Hub | `shounak6942/watchtower` | `latest`, `latest-dev`, version tags |
 | GHCR | `ghcr.io/dallergy/watchtower` | `latest`, `latest-dev`, version tags |
 
-Docker Hub publishing requires repository secrets `DOCKER_USERNAME` (must be `shounak9642`) and `DOCKER_PASSWORD`. Use a Docker Hub [access token](https://docs.docker.com/security/for-developers/access-tokens/) with **Read, Write & Delete** permissions (account passwords with 2FA enabled will not work).
+Docker Hub publishing requires repository secrets `DOCKER_USERNAME` (must be `shounak6942`) and `DOCKER_PASSWORD`. Use a Docker Hub [access token](https://docs.docker.com/security/for-developers/access-tokens/) with **Read, Write & Delete** permissions (account passwords with 2FA enabled will not work).
 
 If you see `error from registry: denied` when pulling from GHCR, the package is likely still **private**. To make it publicly pullable:
 
@@ -69,7 +69,7 @@ Watchtower is intended to be used in homelabs, media centers, local dev environm
 ## Documentation
 The full documentation is available in the [docs](./docs/) directory and on [GitHub Pages](https://dallergy.github.io/watchtower/).
 
-> **Note:** This is a community-maintained fork. Use the `shounak9642/watchtower` image on Docker Hub instead of the unmaintained `containrrr/watchtower` image.
+> **Note:** This is a community-maintained fork. Use the `shounak6942/watchtower` image on Docker Hub instead of the unmaintained `containrrr/watchtower` image.
 
 ## Contributors
 
