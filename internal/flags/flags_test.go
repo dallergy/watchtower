@@ -142,7 +142,7 @@ func TestProcessFlagAliases(t *testing.T) {
 	ProcessFlagAliases(flags)
 
 	urls, _ := flags.GetStringArray(`notification-url`)
-	assert.Contains(t, urls, `logger://`)
+	assert.Empty(t, urls)
 
 	logStdout, _ := flags.GetBool(`notification-log-stdout`)
 	assert.True(t, logStdout)

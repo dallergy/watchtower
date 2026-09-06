@@ -1,11 +1,12 @@
 package notifications
 
 import (
+	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/spf13/cobra"
 
-	shoutrrrSmtp "github.com/containrrr/shoutrrr/pkg/services/smtp"
 	t "github.com/containrrr/watchtower/pkg/types"
 	log "github.com/sirupsen/logrus"
 )
@@ -51,30 +52,29 @@ func newEmailNotifier(c *cobra.Command) t.ConvertibleNotifier {
 }
 
 func (e *emailTypeNotifier) GetURL(c *cobra.Command) (string, error) {
-	conf := &shoutrrrSmtp.Config{
-		FromAddress: e.From,
-		FromName:    "Watchtower",
-		ToAddresses: []string{e.To},
-		Port:        uint16(e.Port),
-		Host:        e.Server,
-		Username:    e.User,
-		Password:    e.Password,
-		UseStartTLS: !e.tlsSkipVerify,
-		UseHTML:     false,
-		Encryption:  shoutrrrSmtp.EncMethods.Auto,
-		Auth:        shoutrrrSmtp.AuthTypes.None,
-		ClientHost:  "localhost",
+	scheme := "mailtos"
+	if e.Port == 25 || e.tlsSkipVerify {
+		scheme = "mailto"
 	}
 
-	if len(e.User) > 0 {
-		conf.Auth = shoutrrrSmtp.AuthTypes.Plain
+	u := &url.URL{
+		Scheme: scheme,
+		Host:   fmt.Sprintf("%s:%d", e.Server, e.Port),
 	}
 
-	if e.tlsSkipVerify {
-		conf.Encryption = shoutrrrSmtp.EncMethods.None
+	if e.User != "" || e.Password != "" {
+		u.User = url.UserPassword(e.User, e.Password)
 	}
 
-	return conf.GetURL().String(), nil
+	q := url.Values{}
+	q.Set("from", fmt.Sprintf("Watchtower <%s>", e.From))
+	q.Set("to", e.To)
+	if e.Server != "" {
+		q.Set("smtp", e.Server)
+	}
+	u.RawQuery = q.Encode()
+
+	return u.String(), nil
 }
 
 func (e *emailTypeNotifier) GetDelay() time.Duration {

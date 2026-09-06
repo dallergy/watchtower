@@ -3,7 +3,6 @@ package notifications
 import (
 	"time"
 
-	"github.com/containrrr/shoutrrr/pkg/types"
 	"github.com/containrrr/watchtower/internal/actions/mocks"
 	"github.com/containrrr/watchtower/internal/flags"
 	s "github.com/containrrr/watchtower/pkg/session"
@@ -60,7 +59,7 @@ func mockDataFromStates(states ...s.State) Data {
 	}
 }
 
-var _ = Describe("Shoutrrr", func() {
+var _ = Describe("Apprise", func() {
 	var logBuffer *gbytes.Buffer
 
 	BeforeEach(func() {
@@ -88,8 +87,8 @@ updt1 (mock/updt1:latest): Updated
 			It("should be added to the logrus hooks", func() {
 				level := logrus.TraceLevel
 				hooksBefore := len(logrus.StandardLogger().Hooks[level])
-				shoutrrr := createNotifier([]string{}, level, "", true, StaticData{}, false, time.Second)
-				shoutrrr.AddLogHook()
+				notifier := createNotifier("", "", []string{}, level, "", true, StaticData{}, false, time.Second)
+				notifier.AddLogHook()
 				hooksAfter := len(logrus.StandardLogger().Hooks[level])
 				Expect(hooksAfter).To(BeNumerically(">", hooksBefore))
 			})
@@ -97,10 +96,10 @@ updt1 (mock/updt1:latest): Updated
 		When("it is being added a second time", func() {
 			It("should not be added to the logrus hooks", func() {
 				level := logrus.TraceLevel
-				shoutrrr := createNotifier([]string{}, level, "", true, StaticData{}, false, time.Second)
-				shoutrrr.AddLogHook()
+				notifier := createNotifier("", "", []string{}, level, "", true, StaticData{}, false, time.Second)
+				notifier.AddLogHook()
 				hooksBefore := len(logrus.StandardLogger().Hooks[level])
-				shoutrrr.AddLogHook()
+				notifier.AddLogHook()
 				hooksAfter := len(logrus.StandardLogger().Hooks[level])
 				Expect(hooksAfter).To(Equal(hooksBefore))
 			})
@@ -114,7 +113,7 @@ updt1 (mock/updt1:latest): Updated
 				cmd := new(cobra.Command)
 				flags.RegisterNotificationFlags(cmd)
 
-				shoutrrr := createNotifier([]string{}, logrus.TraceLevel, "", true, StaticData{}, false, time.Second)
+				notifier := createNotifier("", "", []string{}, logrus.TraceLevel, "", true, StaticData{}, false, time.Second)
 
 				entries := []*logrus.Entry{
 					{
@@ -122,7 +121,7 @@ updt1 (mock/updt1:latest): Updated
 					},
 				}
 
-				s, err := shoutrrr.buildMessage(Data{Entries: entries})
+				s, err := notifier.buildMessage(Data{Entries: entries})
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(s).To(Equal("foo bar\n"))
@@ -132,10 +131,10 @@ updt1 (mock/updt1:latest): Updated
 			It("should format the messages using the custom template", func() {
 
 				tplString := `{{range .}}{{.Level}}: {{.Message}}{{println}}{{end}}`
-				tpl, err := getShoutrrrTemplate(tplString, true)
+				tpl, err := getNotificationTemplate(tplString, true)
 				Expect(err).ToNot(HaveOccurred())
 
-				shoutrrr := &shoutrrrTypeNotifier{
+				notifier := &appriseTypeNotifier{
 					template:       tpl,
 					legacyTemplate: true,
 				}
@@ -147,7 +146,7 @@ updt1 (mock/updt1:latest): Updated
 					},
 				}
 
-				s, err := shoutrrr.buildMessage(Data{Entries: entries})
+				s, err := notifier.buildMessage(Data{Entries: entries})
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(s).To(Equal("info: foo bar\n"))
@@ -269,31 +268,31 @@ Turns out everything is on fire
 	When("batching notifications", func() {
 		When("no messages are queued", func() {
 			It("should not send any notification", func() {
-				shoutrrr := createNotifier([]string{"logger://"}, allButTrace, "", true, StaticData{}, false, time.Duration(0))
-				shoutrrr.StartNotification()
-				shoutrrr.SendNotification(nil)
-				Consistently(logBuffer).ShouldNot(gbytes.Say(`Shoutrrr:`))
+				notifier := createNotifier("", "", []string{"logger://"}, allButTrace, "", true, StaticData{}, false, time.Duration(0))
+				notifier.StartNotification()
+				notifier.SendNotification(nil)
+				Consistently(logBuffer).ShouldNot(gbytes.Say(`This log message is sponsored by ContainrrrVPN`))
 			})
 		})
 		When("at least one message is queued", func() {
 			It("should send a notification", func() {
-				shoutrrr := createNotifier([]string{"logger://"}, allButTrace, "", true, StaticData{}, false, time.Duration(0))
-				shoutrrr.AddLogHook()
-				shoutrrr.StartNotification()
+				notifier := createNotifier("", "", []string{"logger://"}, allButTrace, "", true, StaticData{}, false, time.Duration(0))
+				notifier.AddLogHook()
+				notifier.StartNotification()
 				logrus.Info("This log message is sponsored by ContainrrrVPN")
-				shoutrrr.SendNotification(nil)
-				Eventually(logBuffer).Should(gbytes.Say(`Shoutrrr: This log message is sponsored by ContainrrrVPN`))
+				notifier.SendNotification(nil)
+				Eventually(logBuffer).Should(gbytes.Say(`This log message is sponsored by ContainrrrVPN`))
 			})
 		})
 	})
 
 	When("the title data field is empty", func() {
 		It("should not have set the title param", func() {
-			shoutrrr := createNotifier([]string{"logger://"}, allButTrace, "", true, StaticData{
+			notifier := createNotifier("", "", []string{}, allButTrace, "", true, StaticData{
 				Host:  "test.host",
 				Title: "",
 			}, false, time.Second)
-			_, found := shoutrrr.params.Title()
+			_, found := notifier.params.Title()
 			Expect(found).ToNot(BeTrue())
 		})
 	})
@@ -308,10 +307,10 @@ Turns out everything is on fire
 		})
 
 		It("SlowNotificationSent", func() {
-			shoutrrr, blockingRouter := sendNotificationsWithBlockingRouter(true)
+			notifier, blockingRouter := sendNotificationsWithBlockingRouter(true)
 
 			blockingRouter.unlock <- true
-			shoutrrr.Close()
+			notifier.Close()
 
 			Eventually(blockingRouter.sent).Should(Receive(BeTrue()))
 		})
@@ -323,29 +322,29 @@ type blockingRouter struct {
 	sent   chan bool
 }
 
-func (b blockingRouter) Send(_ string, _ *types.Params) []error {
+func (b blockingRouter) Send(_ string, _ *notificationParams) []error {
 	<-b.unlock
 	b.sent <- true
 	return nil
 }
 
-func sendNotificationsWithBlockingRouter(legacy bool) (*shoutrrrTypeNotifier, *blockingRouter) {
+func sendNotificationsWithBlockingRouter(legacy bool) (*appriseTypeNotifier, *blockingRouter) {
 
 	router := &blockingRouter{
 		unlock: make(chan bool, 1),
 		sent:   make(chan bool, 1),
 	}
 
-	tpl, err := getShoutrrrTemplate("", legacy)
+	tpl, err := getNotificationTemplate("", legacy)
 	Expect(err).NotTo(HaveOccurred())
 
-	shoutrrr := &shoutrrrTypeNotifier{
+	notifier := &appriseTypeNotifier{
 		template:       tpl,
 		messages:       make(chan string, 1),
 		done:           make(chan bool),
 		Router:         router,
 		legacyTemplate: legacy,
-		params:         &types.Params{},
+		params:         &notificationParams{},
 		delay:          time.Duration(0),
 	}
 
@@ -353,20 +352,20 @@ func sendNotificationsWithBlockingRouter(legacy bool) (*shoutrrrTypeNotifier, *b
 		Message: "foo bar",
 	}
 
-	go sendNotifications(shoutrrr)
+	go sendNotifications(notifier)
 
-	shoutrrr.StartNotification()
-	_ = shoutrrr.Fire(entry)
+	notifier.StartNotification()
+	_ = notifier.Fire(entry)
 
-	shoutrrr.SendNotification(nil)
+	notifier.SendNotification(nil)
 
-	return shoutrrr, router
+	return notifier, router
 }
 
-func createNotifierWithTemplate(tplString string, legacy bool) (*shoutrrrTypeNotifier, error) {
-	tpl, err := getShoutrrrTemplate(tplString, legacy)
+func createNotifierWithTemplate(tplString string, legacy bool) (*appriseTypeNotifier, error) {
+	tpl, err := getNotificationTemplate(tplString, legacy)
 
-	return &shoutrrrTypeNotifier{
+	return &appriseTypeNotifier{
 		template:       tpl,
 		legacyTemplate: legacy,
 	}, err

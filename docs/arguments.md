@@ -34,6 +34,7 @@ This can be used to avoid putting secrets in the configuration file or command l
 
 The following arguments are currently supported (including their corresponding `WATCHTOWER_` environment variables):
  - `notification-url`
+ - `notification-apprise-key`
  - `notification-email-server-password`
  - `notification-slack-hook-url`
  - `notification-msteams-hook`
@@ -455,7 +456,6 @@ Writes the session results to STDOUT using a stable, machine-readable format (in
 Alias for:
 
 ```text
-		--notification-url logger://
 		--notification-log-stdout
 		--notification-report
 		--notification-template porcelain.VERSION.summary-no-log

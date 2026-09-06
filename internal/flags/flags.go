@@ -221,7 +221,7 @@ func RegisterNotificationFlags(rootCmd *cobra.Command) {
 		"notifications",
 		"n",
 		envStringSlice("WATCHTOWER_NOTIFICATIONS"),
-		" Notification types to send (valid: email, slack, msteams, gotify, shoutrrr)")
+		" Notification types to send (valid: email, slack, msteams, gotify, apprise)")
 
 	flags.String(
 		"notifications-level",
@@ -359,12 +359,22 @@ Should only be used for testing.`)
 	flags.String(
 		"notification-template",
 		envString("WATCHTOWER_NOTIFICATION_TEMPLATE"),
-		"The shoutrrr text/template for the messages")
+		"The text/template for notification messages")
 
 	flags.StringArray(
 		"notification-url",
 		envStringSlice("WATCHTOWER_NOTIFICATION_URL"),
-		"The shoutrrr URL to send notifications to")
+		"The Apprise service URL(s) to send notifications to")
+
+	flags.String(
+		"notification-apprise-url",
+		envString("WATCHTOWER_NOTIFICATION_APPRISE_URL"),
+		"The Apprise API server URL (e.g. http://apprise:8000)")
+
+	flags.String(
+		"notification-apprise-key",
+		envString("WATCHTOWER_NOTIFICATION_APPRISE_KEY"),
+		"Optional Apprise API key for persistent notification configuration")
 
 	flags.Bool("notification-report",
 		envBool("WATCHTOWER_NOTIFICATION_REPORT"),
@@ -517,6 +527,7 @@ func GetSecretsFromFiles(rootCmd *cobra.Command) {
 		"notification-slack-hook-url",
 		"notification-msteams-hook",
 		"notification-gotify-token",
+		"notification-apprise-key",
 		"notification-url",
 		"http-api-token",
 	}
@@ -591,9 +602,6 @@ func ProcessFlagAliases(flags *pflag.FlagSet) {
 	if porcelain != "" {
 		if porcelain != "v1" {
 			log.Fatalf(`Unknown porcelain version %q. Supported values: "v1"`, porcelain)
-		}
-		if err = appendFlagValue(flags, `notification-url`, `logger://`); err != nil {
-			log.Errorf(`Failed to set flag: %v`, err)
 		}
 		setFlagIfDefault(flags, `notification-log-stdout`, `true`)
 		setFlagIfDefault(flags, `notification-report`, `true`)

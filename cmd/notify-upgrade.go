@@ -21,7 +21,7 @@ var notifyUpgradeCommand = NewNotifyUpgradeCommand()
 func NewNotifyUpgradeCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "notify-upgrade",
-		Short: "Upgrade legacy notification configuration to shoutrrr URLs",
+		Short: "Upgrade legacy notification configuration to Apprise URLs",
 		Run:   runNotifyUpgrade,
 	}
 }
