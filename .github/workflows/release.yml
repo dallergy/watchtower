@@ -83,7 +83,11 @@ jobs:
             echo "Failed to authenticate with Docker Hub"
             exit 1
           fi
+<<<<<<< Updated upstream
           STATUS=$(curl -fsS -o /dev/null -w "%{http_code}" \
+=======
+          STATUS=$(curl -sS -o /dev/null -w "%{http_code}" \
+>>>>>>> Stashed changes
             -H "Authorization: JWT ${TOKEN}" \
             "https://hub.docker.com/v2/repositories/${DOCKER_USERNAME}/watchtower/")
           if [ "$STATUS" = "404" ]; then
