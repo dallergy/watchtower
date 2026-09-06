@@ -21,7 +21,7 @@ var _ = Describe("notifications", func() {
 
 			err := command.ParseFlags([]string{
 				"--notifications",
-				"shoutrrr",
+				"apprise",
 			})
 			Expect(err).NotTo(HaveOccurred())
 			notif := notifications.NewNotifier(command)
@@ -137,18 +137,15 @@ var _ = Describe("notifications", func() {
 		})
 	})
 	Describe("the slack notifier", func() {
-		// builderFn := notifications.NewSlackNotifier
-
 		When("passing a discord url to the slack notifier", func() {
 			command := cmd.NewRootCommand()
 			flags.RegisterNotificationFlags(command)
 
 			channel := "123456789"
 			token := "abvsihdbau"
-			color := notifications.ColorInt
 			username := "containrrrbot"
 			iconURL := "https://containrrr.dev/watchtower-sq180.png"
-			expected := fmt.Sprintf("discord://%s@%s?color=0x%x&colordebug=0x0&colorerror=0x0&colorinfo=0x0&colorwarn=0x0&username=watchtower", token, channel, color)
+			expected := fmt.Sprintf("discord://%s/%s?username=watchtower", channel, token)
 			buildArgs := func(url string) []string {
 				return []string{
 					"--notifications",
@@ -169,7 +166,7 @@ var _ = Describe("notifications", func() {
 			When("icon URL and username are specified", func() {
 				It("should return the expected URL", func() {
 					hookURL := fmt.Sprintf("https://%s/api/webhooks/%s/%s/slack", "discord.com", channel, token)
-					expectedOutput := fmt.Sprintf("discord://%s@%s?avatar=%s&color=0x%x&colordebug=0x0&colorerror=0x0&colorinfo=0x0&colorwarn=0x0&username=%s", token, channel, url.QueryEscape(iconURL), color, username)
+					expectedOutput := fmt.Sprintf("discord://%s/%s?avatar=%s&username=%s", channel, token, url.QueryEscape(iconURL), username)
 					expectedDelay := time.Duration(7) * time.Second
 					args := []string{
 						"--notifications",
@@ -188,14 +185,13 @@ var _ = Describe("notifications", func() {
 				})
 			})
 		})
-		When("converting a slack service config into a shoutrrr url", func() {
+		When("converting a slack service config into an apprise url", func() {
 			command := cmd.NewRootCommand()
 			flags.RegisterNotificationFlags(command)
 			username := "containrrrbot"
 			tokenA := "AAAAAAAAA"
 			tokenB := "BBBBBBBBB"
 			tokenC := "123456789123456789123456"
-			color := url.QueryEscape(notifications.ColorHex)
 			iconURL := "https://containrrr.dev/watchtower-sq180.png"
 			iconEmoji := "whale"
 
@@ -203,7 +199,7 @@ var _ = Describe("notifications", func() {
 				It("should return the expected URL", func() {
 
 					hookURL := fmt.Sprintf("https://hooks.slack.com/services/%s/%s/%s", tokenA, tokenB, tokenC)
-					expectedOutput := fmt.Sprintf("slack://hook:%s-%s-%s@webhook?botname=%s&color=%s&icon=%s", tokenA, tokenB, tokenC, username, color, url.QueryEscape(iconURL))
+					expectedOutput := fmt.Sprintf("slack://%s@%s/%s/%s?image=%s", username, tokenA, tokenB, tokenC, url.QueryEscape(iconURL))
 					expectedDelay := time.Duration(7) * time.Second
 
 					args := []string{
@@ -226,7 +222,7 @@ var _ = Describe("notifications", func() {
 			When("icon emoji is specified", func() {
 				It("should return the expected URL", func() {
 					hookURL := fmt.Sprintf("https://hooks.slack.com/services/%s/%s/%s", tokenA, tokenB, tokenC)
-					expectedOutput := fmt.Sprintf("slack://hook:%s-%s-%s@webhook?botname=%s&color=%s&icon=%s", tokenA, tokenB, tokenC, username, color, iconEmoji)
+					expectedOutput := fmt.Sprintf("slack://%s@%s/%s/%s?image=%s", username, tokenA, tokenB, tokenC, iconEmoji)
 
 					args := []string{
 						"--notifications",
@@ -246,15 +242,15 @@ var _ = Describe("notifications", func() {
 	})
 
 	Describe("the gotify notifier", func() {
-		When("converting a gotify service config into a shoutrrr url", func() {
+		When("converting a gotify service config into an apprise url", func() {
 			It("should return the expected URL", func() {
 				command := cmd.NewRootCommand()
 				flags.RegisterNotificationFlags(command)
 
 				token := "aaa"
-				host := "shoutrrr.local"
+				host := "apprise.local"
 
-				expectedOutput := fmt.Sprintf("gotify://%s/%s?title=", host, token)
+				expectedOutput := fmt.Sprintf("gotifys://%s/%s", host, token)
 
 				args := []string{
 					"--notifications",
@@ -271,7 +267,7 @@ var _ = Describe("notifications", func() {
 	})
 
 	Describe("the teams notifier", func() {
-		When("converting a teams service config into a shoutrrr url", func() {
+		When("converting a teams service config into an apprise url", func() {
 			It("should return the expected URL", func() {
 				command := cmd.NewRootCommand()
 				flags.RegisterNotificationFlags(command)
@@ -279,10 +275,9 @@ var _ = Describe("notifications", func() {
 				tokenA := "11111111-4444-4444-8444-cccccccccccc@22222222-4444-4444-8444-cccccccccccc"
 				tokenB := "33333333012222222222333333333344"
 				tokenC := "44444444-4444-4444-8444-cccccccccccc"
-				color := url.QueryEscape(notifications.ColorHex)
 
 				hookURL := fmt.Sprintf("https://outlook.office.com/webhook/%s/IncomingWebhook/%s/%s", tokenA, tokenB, tokenC)
-				expectedOutput := fmt.Sprintf("teams://%s/%s/%s?color=%s", tokenA, tokenB, tokenC, color)
+				expectedOutput := fmt.Sprintf("msteams://%s/%s/%s/", tokenA, tokenB, tokenC)
 
 				args := []string{
 					"--notifications",
@@ -297,10 +292,10 @@ var _ = Describe("notifications", func() {
 	})
 
 	Describe("the email notifier", func() {
-		When("converting an email service config into a shoutrrr url", func() {
+		When("converting an email service config into an apprise url", func() {
 			It("should set the from address in the URL", func() {
 				fromAddress := "lala@example.com"
-				expectedOutput := buildExpectedURL("containrrrbot", "secret-password", "mail.containrrr.dev", 25, fromAddress, "mail@example.com", "Plain")
+				expectedOutput := buildExpectedURL("containrrrbot", "secret-password", "mail.containrrr.dev", 25, fromAddress, "mail@example.com")
 				expectedDelay := time.Duration(7) * time.Second
 
 				args := []string{
@@ -326,7 +321,7 @@ var _ = Describe("notifications", func() {
 
 				fromAddress := "sender@example.com"
 				toAddress := "receiver@example.com"
-				expectedOutput := buildExpectedURL("containrrrbot", "secret-password", "mail.containrrr.dev", 25, fromAddress, toAddress, "Plain")
+				expectedOutput := buildExpectedURL("containrrrbot", "secret-password", "mail.containrrr.dev", 25, fromAddress, toAddress)
 				expectedDelay := time.Duration(7) * time.Second
 
 				args := []string{
@@ -352,14 +347,18 @@ var _ = Describe("notifications", func() {
 	})
 })
 
-func buildExpectedURL(username string, password string, host string, port int, from string, to string, auth string) string {
-	var template = "smtp://%s:%s@%s:%d/?auth=%s&fromaddress=%s&fromname=Watchtower&subject=&toaddresses=%s"
-	return fmt.Sprintf(template,
-		url.QueryEscape(username),
-		url.QueryEscape(password),
-		host, port, auth,
-		url.QueryEscape(from),
-		url.QueryEscape(to))
+func buildExpectedURL(username string, password string, host string, port int, from string, to string) string {
+	u := &url.URL{
+		Scheme: "mailto",
+		User:   url.UserPassword(username, password),
+		Host:   fmt.Sprintf("%s:%d", host, port),
+	}
+	q := url.Values{}
+	q.Set("from", fmt.Sprintf("Watchtower <%s>", from))
+	q.Set("to", to)
+	q.Set("smtp", host)
+	u.RawQuery = q.Encode()
+	return u.String()
 }
 
 func testURL(args []string, expectedURL string, expectedDelay time.Duration) {

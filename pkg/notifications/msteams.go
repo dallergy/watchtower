@@ -1,9 +1,10 @@
 package notifications
 
 import (
+	"fmt"
 	"net/url"
+	"strings"
 
-	shoutrrrTeams "github.com/containrrr/shoutrrr/pkg/services/teams"
 	t "github.com/containrrr/watchtower/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -42,12 +43,15 @@ func (n *msTeamsTypeNotifier) GetURL(c *cobra.Command) (string, error) {
 		return "", err
 	}
 
-	config, err := shoutrrrTeams.ConfigFromWebhookURL(*webhookURL)
-	if err != nil {
-		return "", err
+	path := strings.Trim(webhookURL.Path, "/")
+	parts := strings.Split(path, "/")
+	if len(parts) < 5 || parts[2] != "IncomingWebhook" {
+		return "", fmt.Errorf("invalid msteams webhook URL")
 	}
 
-	config.Color = ColorHex
+	tokenA := parts[1]
+	tokenB := parts[3]
+	tokenC := parts[4]
 
-	return config.GetURL().String(), nil
+	return fmt.Sprintf("msteams://%s/%s/%s/", tokenA, tokenB, tokenC), nil
 }

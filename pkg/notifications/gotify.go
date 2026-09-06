@@ -1,10 +1,10 @@
 package notifications
 
 import (
+	"fmt"
 	"net/url"
 	"strings"
 
-	shoutrrrGotify "github.com/containrrr/shoutrrr/pkg/services/gotify"
 	t "github.com/containrrr/watchtower/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -66,12 +66,15 @@ func (n *gotifyTypeNotifier) GetURL(c *cobra.Command) (string, error) {
 		return "", err
 	}
 
-	config := &shoutrrrGotify.Config{
-		Host:       apiURL.Host,
-		Path:       apiURL.Path,
-		DisableTLS: apiURL.Scheme == "http",
-		Token:      n.gotifyAppToken,
+	scheme := "gotifys"
+	if apiURL.Scheme == "http" {
+		scheme = "gotify"
 	}
 
-	return config.GetURL().String(), nil
+	path := strings.Trim(apiURL.Path, "/")
+	if path != "" {
+		return fmt.Sprintf("%s://%s/%s/%s", scheme, apiURL.Host, path, n.gotifyAppToken), nil
+	}
+
+	return fmt.Sprintf("%s://%s/%s", scheme, apiURL.Host, n.gotifyAppToken), nil
 }

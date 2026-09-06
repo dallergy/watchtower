@@ -24,14 +24,16 @@ func NewNotifier(c *cobra.Command) ty.Notifier {
 	stdout, _ := f.GetBool("notification-log-stdout")
 	tplString, _ := f.GetString("notification-template")
 	urls, _ := f.GetStringArray("notification-url")
+	appriseURL, _ := f.GetString("notification-apprise-url")
+	appriseKey, _ := f.GetString("notification-apprise-key")
 
 	data := GetTemplateData(c)
 	urls, delay := AppendLegacyUrls(urls, c)
 
-	return createNotifier(urls, logLevel, tplString, !reportTemplate, data, stdout, delay)
+	return createNotifier(appriseURL, appriseKey, urls, logLevel, tplString, !reportTemplate, data, stdout, delay)
 }
 
-// AppendLegacyUrls creates shoutrrr equivalent URLs from legacy notification flags
+// AppendLegacyUrls creates Apprise-compatible URLs from legacy notification flags
 func AppendLegacyUrls(urls []string, cmd *cobra.Command) ([]string, time.Duration) {
 
 	// Parse types and create notifiers.
@@ -56,7 +58,7 @@ func AppendLegacyUrls(urls []string, cmd *cobra.Command) ([]string, time.Duratio
 			legacyNotifier = newMsTeamsNotifier(cmd)
 		case gotifyType:
 			legacyNotifier = newGotifyNotifier(cmd)
-		case shoutrrrType:
+		case appriseType:
 			continue
 		default:
 			log.Fatalf("Unknown notification type %q", t)
@@ -64,17 +66,17 @@ func AppendLegacyUrls(urls []string, cmd *cobra.Command) ([]string, time.Duratio
 			continue
 		}
 
-		shoutrrrURL, err := legacyNotifier.GetURL(cmd)
+		appriseURL, err := legacyNotifier.GetURL(cmd)
 		if err != nil {
 			log.Fatal("failed to create notification config: ", err)
 		}
-		urls = append(urls, shoutrrrURL)
+		urls = append(urls, appriseURL)
 
 		if delayNotifier, ok := legacyNotifier.(ty.DelayNotifier); ok {
 			legacyDelay = delayNotifier.GetDelay()
 		}
 
-		log.WithField("URL", shoutrrrURL).Trace("created Shoutrrr URL from legacy notifier")
+		log.WithField("URL", appriseURL).Trace("created Apprise URL from legacy notifier")
 	}
 
 	delay := GetDelay(cmd, legacyDelay)
