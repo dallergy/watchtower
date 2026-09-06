@@ -16,8 +16,8 @@ import (
 )
 
 // DockerAPIMinVersion is the minimum version of the docker api required to
-// use watchtower
-const DockerAPIMinVersion string = "1.25"
+// use watchtower. Modern Docker Engine versions require at least 1.40.
+const DockerAPIMinVersion string = "1.40"
 
 var defaultInterval = int((time.Hour * 24).Seconds())
 
