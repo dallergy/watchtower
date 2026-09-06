@@ -2,7 +2,7 @@
 
   ### Community-maintained fork
   The original [containrrr/watchtower](https://github.com/containrrr/watchtower) project is no longer maintained.
-  This fork is actively maintained by [dallergy](https://github.com/dallergy).
+  This fork is actively maintained by [dallergy](https://github.com/dallergy) and published to Docker Hub as [shounak9642/watchtower](https://hub.docker.com/r/shounak9642/watchtower).
 
   ---
   
@@ -32,20 +32,25 @@ Watchtower will pull down your new image, gracefully shut down your existing con
 $ docker run --detach \
     --name watchtower \
     --volume /var/run/docker.sock:/var/run/docker.sock \
-    ghcr.io/dallergy/watchtower:latest
+    shounak9642/watchtower:latest
 ```
 
 ### Image availability
 
-Container images are published to GitHub Container Registry on every push to `main` and on version tags.
+Container images are published to **Docker Hub** and **GitHub Container Registry** on every push to `main` and on version tags.
 
-If you see `error from registry: denied` when pulling the image, the GHCR package is likely still **private**. To make it publicly pullable:
+| Registry | Image | Tags |
+|----------|-------|------|
+| Docker Hub | `shounak9642/watchtower` | `latest`, `latest-dev`, version tags |
+| GHCR | `ghcr.io/dallergy/watchtower` | `latest`, `latest-dev`, version tags |
+
+If you see `error from registry: denied` when pulling from GHCR, the package is likely still **private**. To make it publicly pullable:
 
 1. Open [github.com/users/dallergy/packages/container/watchtower](https://github.com/users/dallergy/packages/container/package/watchtower)
 2. Go to **Package settings**
 3. Change visibility to **Public**
 
-Until the package is public, you can build and run locally instead:
+Until the GHCR package is public, use the Docker Hub image or build locally:
 
 ```
 $ git clone https://github.com/dallergy/watchtower.git
@@ -60,9 +65,9 @@ $ docker run --detach \
 Watchtower is intended to be used in homelabs, media centers, local dev environments, and similar. We do **not** recommend using Watchtower in a commercial or production environment. If that is you, you should be looking into using Kubernetes. If that feels like too big a step for you, please look into solutions like [MicroK8s](https://microk8s.io/) and [k3s](https://k3s.io/) that take away a lot of the toil of running a Kubernetes cluster. 
 
 ## Documentation
-The full documentation is available at https://containrrr.dev/watchtower.
+The full documentation is available in the [docs](./docs/) directory and on [GitHub Pages](https://dallergy.github.io/watchtower/).
 
-> **Note:** Documentation is being migrated to this fork. For the latest usage instructions, see the [docs](./docs/) directory in this repository.
+> **Note:** This is a community-maintained fork. Use the `shounak9642/watchtower` image on Docker Hub instead of the unmaintained `containrrr/watchtower` image.
 
 ## Contributors
 
