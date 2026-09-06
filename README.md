@@ -44,6 +44,8 @@ Container images are published to **Docker Hub** and **GitHub Container Registry
 | Docker Hub | `shounak9642/watchtower` | `latest`, `latest-dev`, version tags |
 | GHCR | `ghcr.io/dallergy/watchtower` | `latest`, `latest-dev`, version tags |
 
+Docker Hub publishing requires repository secrets `DOCKER_USERNAME` and `DOCKER_PASSWORD`. Use a Docker Hub [access token](https://docs.docker.com/security/for-developers/access-tokens/) with **Read, Write & Delete** permissions (account passwords with 2FA enabled will not work).
+
 If you see `error from registry: denied` when pulling from GHCR, the package is likely still **private**. To make it publicly pullable:
 
 1. Open [github.com/users/dallergy/packages/container/watchtower](https://github.com/users/dallergy/packages/container/package/watchtower)
