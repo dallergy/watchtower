@@ -286,6 +286,14 @@ Turns out everything is on fire
 		})
 	})
 
+	When("notification URLs are set without an apprise server", func() {
+		It("should create a notifier without failing", func() {
+			notifier := createNotifier("", "", []string{"discord://token/webhook"}, allButTrace, "", true, StaticData{}, false, time.Second)
+			Expect(notifier).NotTo(BeNil())
+			Expect(notifier.Router).To(BeAssignableToTypeOf(&noopRouter{}))
+		})
+	})
+
 	When("the title data field is empty", func() {
 		It("should not have set the title param", func() {
 			notifier := createNotifier("", "", []string{}, allButTrace, "", true, StaticData{

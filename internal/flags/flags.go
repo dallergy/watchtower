@@ -369,7 +369,7 @@ Should only be used for testing.`)
 	flags.String(
 		"notification-apprise-url",
 		envString("WATCHTOWER_NOTIFICATION_APPRISE_URL"),
-		"The Apprise API server URL (e.g. http://apprise:8000)")
+		"The Apprise API server URL (e.g. http://apprise:8000). Optional; notifications are skipped when unset")
 
 	flags.String(
 		"notification-apprise-key",

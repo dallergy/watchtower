@@ -30,7 +30,7 @@ Watchtower sends notifications through an [Apprise API](https://github.com/caron
 
 ### Apprise server configuration
 
--   `--notification-apprise-url` (env. `WATCHTOWER_NOTIFICATION_APPRISE_URL`): The Apprise API server URL (e.g. `http://apprise:8000`). Required when notification URLs are configured.
+-   `--notification-apprise-url` (env. `WATCHTOWER_NOTIFICATION_APPRISE_URL`): The Apprise API server URL (e.g. `http://apprise:8000`). Optional; if omitted while notification URLs are set, Watchtower will run normally but skip sending notifications.
 -   `--notification-apprise-key` (env. `WATCHTOWER_NOTIFICATION_APPRISE_KEY`): Optional Apprise API key for persistent notification configuration. When set, notifications are sent to `/notify/{key}` instead of the stateless endpoint.
 
 ### Notification service URLs

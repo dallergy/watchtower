@@ -254,7 +254,8 @@ func createNotifier(appriseURL, appriseKey string, urls []string, level log.Leve
 		if len(serviceURLs) == 0 {
 			r = &noopRouter{}
 		} else if appriseURL == "" {
-			log.Fatal("Failed to initialize Apprise notifications: --notification-apprise-url (or WATCHTOWER_NOTIFICATION_APPRISE_URL) is required when notification URLs are configured")
+			log.Warn("Notification URLs are configured but --notification-apprise-url (WATCHTOWER_NOTIFICATION_APPRISE_URL) is not set; notifications will be disabled")
+			r = &noopRouter{}
 		} else {
 			r = newHTTPAppriseRouter(appriseURL, appriseKey, serviceURLs)
 		}
