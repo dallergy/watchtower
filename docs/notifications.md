@@ -4,18 +4,72 @@ Watchtower sends notifications when containers are updated. The official image s
 [Apprise](https://github.com/caronc/apprise) installed (the same library [Uptime Kuma](https://github.com/louislam/uptime-kuma) uses),
 so a separate Apprise container is **not** required.
 
-Notifications are triggered from [logrus](http://github.com/sirupsen/logrus) hooks. You configure destination services with Apprise URLs.
+Notifications are triggered from [logrus](http://github.com/sirupsen/logrus) hooks.
 
-!!! note "Using multiple notifications with environment variables"
-    There is currently a bug in Viper (https://github.com/spf13/viper/issues/380), which prevents comma-separated slices to
-    be used when using the environment variable.  
-    A workaround is available where we instead put quotes around the environment variable value and replace the commas with
-    spaces:
+## Gotify (built in)
+
+Gotify is sent directly over HTTP. You do **not** need `WATCHTOWER_NOTIFICATION_APPRISE_URL`, a sidecar Apprise container, or the Apprise CLI.
+
+Either of these is enough:
+
+=== "Gotify URL"
+
+    ```yaml
+    environment:
+      WATCHTOWER_CLEANUP: "true"
+      WATCHTOWER_POLL_INTERVAL: "7200"
+      WATCHTOWER_NOTIFICATION_URL: gotifys://gotify.example.com/your.gotify.application.token
     ```
-    WATCHTOWER_NOTIFICATIONS="slack msteams"
+
+    `gotify://host/token` on a public hostname also uses HTTPS. Prefer `gotifys://` for TLS servers.
+
+Flags: `--notifications`, `--notification-gotify-url`, `--notification-gotify-token`, `--notification-gotify-tls-skip-verify` (env `WATCHTOWER_NOTIFICATION_GOTIFY_TLS_SKIP_VERIFY`).
+
+=== "Gotify env vars"
+
+    ```yaml
+    environment:
+      WATCHTOWER_NOTIFICATIONS: gotify
+      WATCHTOWER_NOTIFICATIONS_LEVEL: info
+      WATCHTOWER_NOTIFICATION_GOTIFY_URL: https://gotify.example.com/
+      WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN: your.gotify.application.token
     ```
-    If you're a `docker-compose` user, make sure to specify environment variables' values in your `.yml` file without double
-    quotes (`"`). This prevents unexpected errors when watchtower starts.
+
+=== "docker-compose"
+
+    ```yaml
+    services:
+      watchtower:
+        image: shounak6942/watchtower:latest
+        restart: unless-stopped
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock:ro
+        environment:
+          WATCHTOWER_CLEANUP: "true"
+          WATCHTOWER_NOTIFICATION_REPORT: "true"
+          WATCHTOWER_NO_STARTUP_MESSAGE: "true"
+          WATCHTOWER_NOTIFICATIONS: gotify
+          WATCHTOWER_NOTIFICATIONS_LEVEL: info
+          WATCHTOWER_NOTIFICATION_GOTIFY_URL: https://gotify.example.com/
+          WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN: your.gotify.application.token
+    ```
+
+=== "docker run"
+
+    ```bash
+    docker run -d \
+      --name watchtower \
+      --restart unless-stopped \
+      -v /var/run/docker.sock:/var/run/docker.sock \
+      -e WATCHTOWER_CLEANUP=true \
+      -e WATCHTOWER_NOTIFICATIONS=gotify \
+      -e WATCHTOWER_NOTIFICATIONS_LEVEL=info \
+      -e WATCHTOWER_NOTIFICATION_GOTIFY_URL=https://gotify.example.com/ \
+      -e WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN=your.gotify.application.token \
+      shounak6942/watchtower
+    ```
+
+See [Compose and environment variables](compose.md) for the full env list.
 
 ## Settings
 
@@ -27,7 +81,18 @@ Notifications are triggered from [logrus](http://github.com/sirupsen/logrus) hoo
 -   `--notification-skip-title` (env. `WATCHTOWER_NOTIFICATION_SKIP_TITLE`): Do not pass the title param to notifications. This will not pass a dynamic title override to notification services. If no title is configured for the service, it will remove the title all together.
 -   `--notification-log-stdout` (env. `WATCHTOWER_NOTIFICATION_LOG_STDOUT`): Write rendered notification output to stdout.
 
-## Built-in Apprise
+## Other services (built-in Apprise)
+
+!!! note "Using multiple notifications with environment variables"
+    There is currently a bug in Viper (https://github.com/spf13/viper/issues/380), which prevents comma-separated slices to
+    be used when using the environment variable.  
+    A workaround is available where we instead put quotes around the environment variable value and replace the commas with
+    spaces:
+    ```
+    WATCHTOWER_NOTIFICATIONS="slack msteams"
+    ```
+    If you're a `docker-compose` user, make sure to specify environment variables' values in your `.yml` file without double
+    quotes (`"`). This prevents unexpected errors when watchtower starts.
 
 Set one or more [Apprise service URLs](https://github.com/caronc/apprise/wiki). Watchtower calls the `apprise` CLI that is already in the image.
 
@@ -351,18 +416,4 @@ docker run -d \
 
 ### Gotify
 
-To push a notification to your Gotify instance, register a Gotify app and specify the Gotify URL and app token:
-
-```bash
-docker run -d \
-  --name watchtower \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -e WATCHTOWER_NOTIFICATIONS=gotify \
-  -e WATCHTOWER_NOTIFICATION_GOTIFY_URL="https://my.gotify.tld/" \
-  -e WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN="SuperSecretToken" \
-  shounak6942/watchtower
-```
-
-`-e WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN` or `--notification-gotify-token` can also reference a file, in which case the contents of the file are used.
-
-If you want to disable TLS verification for the Gotify instance, you can use either `-e WATCHTOWER_NOTIFICATION_GOTIFY_TLS_SKIP_VERIFY=true` or `--notification-gotify-tls-skip-verify`.
+Gotify is documented at the top of this page. Use `WATCHTOWER_NOTIFICATIONS=gotify` plus `WATCHTOWER_NOTIFICATION_GOTIFY_URL` and `WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN`. Do not set `WATCHTOWER_NOTIFICATION_APPRISE_URL`.

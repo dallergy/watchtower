@@ -30,8 +30,9 @@ func NewNotifier(c *cobra.Command) ty.Notifier {
 
 	data := GetTemplateData(c)
 	urls, delay := AppendLegacyUrls(urls, c)
+	gotifySkipVerify, _ := f.GetBool("notification-gotify-tls-skip-verify")
 
-	return createNotifier(appriseURL, appriseKey, appriseConfig, urls, logLevel, tplString, !reportTemplate, data, stdout, delay)
+	return createNotifier(appriseURL, appriseKey, appriseConfig, urls, logLevel, tplString, !reportTemplate, data, stdout, delay, gotifySkipVerify)
 }
 
 // AppendLegacyUrls creates Apprise-compatible URLs from legacy notification flags
@@ -46,11 +47,14 @@ func AppendLegacyUrls(urls []string, cmd *cobra.Command) ([]string, time.Duratio
 	legacyDelay := time.Duration(0)
 
 	for _, t := range types {
+		t = strings.TrimSpace(t)
 
 		var legacyNotifier ty.ConvertibleNotifier
 		var err error
 
 		switch t {
+		case "", appriseType:
+			continue
 		case emailType:
 			legacyNotifier = newEmailNotifier(cmd)
 		case slackType:
@@ -59,11 +63,8 @@ func AppendLegacyUrls(urls []string, cmd *cobra.Command) ([]string, time.Duratio
 			legacyNotifier = newMsTeamsNotifier(cmd)
 		case gotifyType:
 			legacyNotifier = newGotifyNotifier(cmd)
-		case appriseType:
-			continue
 		default:
 			log.Fatalf("Unknown notification type %q", t)
-			// Not really needed, used for nil checking static analysis
 			continue
 		}
 

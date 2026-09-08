@@ -37,7 +37,7 @@ var _ = Describe("Apprise routers", func() {
 				return []byte("ok"), nil
 			}
 
-			notifier := createNotifier("", "", "/etc/apprise.yml", []string{"discord://token/webhook"}, allButTrace, "", true, StaticData{Title: "Watchtower"}, false, time.Duration(0))
+			notifier := createNotifier("", "", "/etc/apprise.yml", []string{"discord://token/webhook"}, allButTrace, "", true, StaticData{Title: "Watchtower"}, false, time.Duration(0), false)
 			Expect(notifier.Router).To(BeAssignableToTypeOf(&cliAppriseRouter{}))
 
 			errs := notifier.Router.Send("hello world", notifier.params)
@@ -87,7 +87,7 @@ var _ = Describe("Apprise routers", func() {
 				return "", errors.New("not used")
 			}
 
-			notifier := createNotifier(server.URL, "", "", []string{"slack://a/b/c"}, logrus.InfoLevel, "", true, StaticData{Title: "Watchtower"}, false, time.Duration(0))
+			notifier := createNotifier(server.URL, "", "", []string{"slack://a/b/c"}, logrus.InfoLevel, "", true, StaticData{Title: "Watchtower"}, false, time.Duration(0), false)
 			Expect(notifier.Router).To(BeAssignableToTypeOf(&httpAppriseRouter{}))
 
 			errs := notifier.Router.Send("updated", notifier.params)
