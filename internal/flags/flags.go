@@ -367,14 +367,19 @@ Should only be used for testing.`)
 		"The Apprise service URL(s) to send notifications to")
 
 	flags.String(
+		"notification-apprise-config",
+		envString("WATCHTOWER_NOTIFICATION_APPRISE_CONFIG"),
+		"Path to a local Apprise configuration file (bundled Apprise CLI)")
+
+	flags.String(
 		"notification-apprise-url",
 		envString("WATCHTOWER_NOTIFICATION_APPRISE_URL"),
-		"The Apprise API server URL (e.g. http://apprise:8000)")
+		"Optional external Apprise API URL. Leave empty to use the Apprise CLI bundled in the image")
 
 	flags.String(
 		"notification-apprise-key",
 		envString("WATCHTOWER_NOTIFICATION_APPRISE_KEY"),
-		"Optional Apprise API key for persistent notification configuration")
+		"Optional Apprise API key used only when --notification-apprise-url is set")
 
 	flags.Bool("notification-report",
 		envBool("WATCHTOWER_NOTIFICATION_REPORT"),

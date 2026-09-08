@@ -38,6 +38,7 @@ nav:
    - 'Home': 'index.md'
    - 'Introduction': 'introduction.md'
    - 'Usage overview': 'usage-overview.md'
+   - 'Compose and environment': 'compose.md'
    - 'Arguments': 'arguments.md'
    - 'Notifications': 'notifications.md'
    - 'Container selection': 'container-selection.md'

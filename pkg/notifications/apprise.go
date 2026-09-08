@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"strings"
 	"text/template"
 	"time"
@@ -23,6 +24,7 @@ const (
 	appriseType     = "apprise"
 	stdoutScheme    = "stdout"
 	legacyStdoutURL = "logger://"
+	appriseBin      = "apprise"
 )
 
 type notificationParams struct {
@@ -39,6 +41,15 @@ func (p *notificationParams) Title() (string, bool) {
 type router interface {
 	Send(message string, params *notificationParams) []error
 }
+
+type execRunner func(name string, args ...string) ([]byte, error)
+type lookPather func(file string) (string, error)
+
+var runCommand execRunner = func(name string, args ...string) ([]byte, error) {
+	return exec.Command(name, args...).CombinedOutput()
+}
+
+var lookPath lookPather = exec.LookPath
 
 // Implements Notifier, logrus.Hook
 type appriseTypeNotifier struct {
@@ -207,9 +218,55 @@ func (r *stdoutRouter) Send(message string, params *notificationParams) []error 
 	return nil
 }
 
+type cliAppriseRouter struct {
+	urls   []string
+	config string
+	bin    string
+	run    execRunner
+}
+
+func newCLIAppriseRouter(urls []string, config string) *cliAppriseRouter {
+	return &cliAppriseRouter{
+		urls:   urls,
+		config: config,
+		bin:    appriseBin,
+		run:    runCommand,
+	}
+}
+
+func (r *cliAppriseRouter) Send(message string, params *notificationParams) []error {
+	args := []string{"--input-format", "text", "--notification-type", "info", "--body", message}
+	if params != nil {
+		if title, ok := params.Title(); ok {
+			args = append(args, "--title", title)
+		}
+	}
+	if r.config != "" {
+		args = append(args, "--config", r.config)
+	}
+	args = append(args, r.urls...)
+
+	out, err := r.run(r.bin, args...)
+	if err != nil {
+		detail := strings.TrimSpace(string(out))
+		if detail == "" {
+			detail = err.Error()
+		} else {
+			detail = fmt.Sprintf("%s: %s", err.Error(), detail)
+		}
+		return perURLErrors(r.urls, fmt.Errorf("failed to send apprise notification: %s", detail))
+	}
+
+	return make([]error, len(r.urls))
+}
+
 func filterNotificationURLs(urls []string) []string {
 	filtered := make([]string, 0, len(urls))
 	for _, u := range urls {
+		u = strings.TrimSpace(u)
+		if u == "" {
+			continue
+		}
 		scheme := GetScheme(u)
 		if scheme == stdoutScheme || u == legacyStdoutURL {
 			continue
@@ -235,7 +292,7 @@ func usesStdoutOnly(urls []string, stdout bool) bool {
 	return true
 }
 
-func createNotifier(appriseURL, appriseKey string, urls []string, level log.Level, tplString string, legacy bool, data StaticData, stdout bool, delay time.Duration) *appriseTypeNotifier {
+func createNotifier(appriseURL, appriseKey, appriseConfig string, urls []string, level log.Level, tplString string, legacy bool, data StaticData, stdout bool, delay time.Duration) *appriseTypeNotifier {
 	tpl, err := getNotificationTemplate(tplString, legacy)
 	if err != nil {
 		log.Errorf("Could not use configured notification template: %s. Using default template", err)
@@ -251,12 +308,19 @@ func createNotifier(appriseURL, appriseKey string, urls []string, level log.Leve
 		r = newStdoutRouter(stdout)
 	} else {
 		serviceURLs := filterNotificationURLs(urls)
-		if len(serviceURLs) == 0 {
+		hasRemote := appriseURL != ""
+		hasLocal := len(serviceURLs) > 0 || appriseConfig != ""
+
+		switch {
+		case !hasRemote && !hasLocal:
 			r = &noopRouter{}
-		} else if appriseURL == "" {
-			log.Fatal("Failed to initialize Apprise notifications: --notification-apprise-url (or WATCHTOWER_NOTIFICATION_APPRISE_URL) is required when notification URLs are configured")
-		} else {
+		case hasRemote:
 			r = newHTTPAppriseRouter(appriseURL, appriseKey, serviceURLs)
+		default:
+			if _, err := lookPath(appriseBin); err != nil {
+				log.Fatal("Failed to initialize Apprise notifications: the bundled `apprise` CLI was not found. Use the official Watchtower image (Apprise is included), install Apprise on the host, or set --notification-apprise-url to an external Apprise API")
+			}
+			r = newCLIAppriseRouter(serviceURLs, appriseConfig)
 		}
 	}
 
@@ -332,7 +396,7 @@ func (n *appriseTypeNotifier) StartNotification() {
 	}
 }
 
-// SendNotification sends the queued up messages as a notification
+// SendNotification sends the queued up messages as a batch
 func (n *appriseTypeNotifier) SendNotification(report t.Report) {
 	n.sendEntries(n.entries, report)
 	n.entries = nil

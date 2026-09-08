@@ -2,7 +2,7 @@
 # Builder
 #
 
-FROM golang:alpine as builder
+FROM golang:alpine AS builder
 
 # use version (for example "v1.7.2") or "main"
 ARG WATCHTOWER_VERSION=main
@@ -27,14 +27,23 @@ RUN \
 # watchtower
 #
 
-FROM scratch
+FROM alpine:3.21
 
 LABEL "com.centurylinklabs.watchtower"="true"
 
-# copy files from other container
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
-COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
+RUN apk add --no-cache \
+        ca-certificates \
+        tzdata \
+        python3 \
+        py3-pip \
+    && pip3 install --no-cache-dir --break-system-packages "apprise==1.9.3" \
+    && apk del --no-network py3-pip \
+    && find /usr -type d -name '__pycache__' -prune -exec rm -rf {} + || true \
+    && rm -rf /root/.cache /tmp/* /var/cache/apk/*
+
 COPY --from=builder /go/watchtower/watchtower /watchtower
+
+EXPOSE 8080
 
 HEALTHCHECK CMD [ "/watchtower", "--health-check"]
 

@@ -46,6 +46,8 @@ docker run -d \
     The symlinked file will always have the same inode, which keeps the bind mount intact and will ensure changes
     to the original file are propagated to the running container (regardless of the inode of the source file!).
 
+For a deploy-ready Compose file and a full environment-variable reference, see [Compose and environment variables](compose.md).
+
 If you mount the config file as described above, be sure to also prepend the URL for the registry when starting up your
 watched image (you can omit the https://). Here is a complete docker-compose.yml file that starts up a docker container
 from a private repo on the GitHub Registry and monitors it with watchtower. Note the command argument changing the interval

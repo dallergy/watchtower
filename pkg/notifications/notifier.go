@@ -26,11 +26,12 @@ func NewNotifier(c *cobra.Command) ty.Notifier {
 	urls, _ := f.GetStringArray("notification-url")
 	appriseURL, _ := f.GetString("notification-apprise-url")
 	appriseKey, _ := f.GetString("notification-apprise-key")
+	appriseConfig, _ := f.GetString("notification-apprise-config")
 
 	data := GetTemplateData(c)
 	urls, delay := AppendLegacyUrls(urls, c)
 
-	return createNotifier(appriseURL, appriseKey, urls, logLevel, tplString, !reportTemplate, data, stdout, delay)
+	return createNotifier(appriseURL, appriseKey, appriseConfig, urls, logLevel, tplString, !reportTemplate, data, stdout, delay)
 }
 
 // AppendLegacyUrls creates Apprise-compatible URLs from legacy notification flags
