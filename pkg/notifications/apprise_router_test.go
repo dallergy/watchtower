@@ -1,17 +1,12 @@
 package notifications
 
 import (
-	"encoding/json"
 	"errors"
-	"io"
-	"net/http"
-	"net/http/httptest"
 	"os/exec"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/sirupsen/logrus"
 )
 
 var _ = Describe("Apprise routers", func() {
@@ -22,8 +17,8 @@ var _ = Describe("Apprise routers", func() {
 		lookPath = exec.LookPath
 	})
 
-	When("notification URLs are configured without an external API", func() {
-		It("should use the bundled Apprise CLI", func() {
+	When("non-Gotify notification URLs are configured", func() {
+		It("should use the Apprise CLI bundled in this container", func() {
 			lookPath = func(file string) (string, error) {
 				Expect(file).To(Equal("apprise"))
 				return "/usr/bin/apprise", nil
@@ -37,7 +32,7 @@ var _ = Describe("Apprise routers", func() {
 				return []byte("ok"), nil
 			}
 
-			notifier := createNotifier("", "", "/etc/apprise.yml", []string{"discord://token/webhook"}, allButTrace, "", true, StaticData{Title: "Watchtower"}, false, time.Duration(0), false)
+			notifier := createNotifier("/etc/apprise.yml", []string{"discord://token/webhook"}, allButTrace, "", true, StaticData{Title: "Watchtower"}, false, time.Duration(0), false)
 			Expect(notifier.Router).To(BeAssignableToTypeOf(&cliAppriseRouter{}))
 
 			errs := notifier.Router.Send("hello world", notifier.params)
@@ -66,36 +61,6 @@ var _ = Describe("Apprise routers", func() {
 			Expect(errs).To(HaveLen(1))
 			Expect(errs[0]).To(HaveOccurred())
 			Expect(errs[0].Error()).To(ContainSubstring("connection refused"))
-		})
-	})
-
-	When("an external Apprise API URL is configured", func() {
-		It("should POST to the bundled-compatible /notify/ endpoint", func() {
-			var got appriseNotificationRequest
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				Expect(r.Method).To(Equal(http.MethodPost))
-				Expect(r.URL.Path).To(Equal("/notify/"))
-				body, err := io.ReadAll(r.Body)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(json.Unmarshal(body, &got)).To(Succeed())
-				w.WriteHeader(http.StatusOK)
-			}))
-			defer server.Close()
-
-			lookPath = func(string) (string, error) {
-				Fail("CLI should not be used when an API URL is set")
-				return "", errors.New("not used")
-			}
-
-			notifier := createNotifier(server.URL, "", "", []string{"slack://a/b/c"}, logrus.InfoLevel, "", true, StaticData{Title: "Watchtower"}, false, time.Duration(0), false)
-			Expect(notifier.Router).To(BeAssignableToTypeOf(&httpAppriseRouter{}))
-
-			errs := notifier.Router.Send("updated", notifier.params)
-			Expect(errs).To(HaveLen(1))
-			Expect(errs[0]).To(BeNil())
-			Expect(got.Body).To(Equal("updated"))
-			Expect(got.Title).To(Equal("Watchtower"))
-			Expect(got.URLs).To(Equal([]string{"slack://a/b/c"}))
 		})
 	})
 })

@@ -364,22 +364,12 @@ Should only be used for testing.`)
 	flags.StringArray(
 		"notification-url",
 		envStringSlice("WATCHTOWER_NOTIFICATION_URL"),
-		"The Apprise service URL(s) to send notifications to")
+		"Gotify or other bundled-notification service URL(s)")
 
 	flags.String(
 		"notification-apprise-config",
 		envString("WATCHTOWER_NOTIFICATION_APPRISE_CONFIG"),
-		"Path to a local Apprise configuration file (bundled Apprise CLI)")
-
-	flags.String(
-		"notification-apprise-url",
-		envString("WATCHTOWER_NOTIFICATION_APPRISE_URL"),
-		"Optional external Apprise API URL. Leave empty to use the Apprise CLI bundled in the image")
-
-	flags.String(
-		"notification-apprise-key",
-		envString("WATCHTOWER_NOTIFICATION_APPRISE_KEY"),
-		"Optional Apprise API key used only when --notification-apprise-url is set")
+		"Optional path inside this container to an Apprise configuration file")
 
 	flags.Bool("notification-report",
 		envBool("WATCHTOWER_NOTIFICATION_REPORT"),
@@ -532,7 +522,6 @@ func GetSecretsFromFiles(rootCmd *cobra.Command) {
 		"notification-slack-hook-url",
 		"notification-msteams-hook",
 		"notification-gotify-token",
-		"notification-apprise-key",
 		"notification-url",
 		"http-api-token",
 	}

@@ -1,6 +1,6 @@
 # Compose and environment variables
 
-Watchtower is a single container. The published image includes the updater **and** Apprise, so a typical stack is only Watchtower plus the Docker socket.
+Watchtower is a single container. Notifications (Gotify, and optionally other services) run inside it. Do not add an Apprise service.
 
 ## Quick start
 
@@ -14,7 +14,7 @@ Watchtower is a single container. The published image includes the updater **and
    docker compose up -d
    ```
 
-The repository `docker-compose.yml` is deploy-ready: one service, no Prometheus, Grafana, or Apprise sidecar.
+The repository `docker-compose.yml` is deploy-ready: one Watchtower service only.
 
 ## Compose file
 
@@ -66,7 +66,7 @@ The Docker socket must be mounted at `/var/run/docker.sock` (read-only is enough
 
 ### Notifications
 
-Gotify is built into Watchtower and talks to your Gotify server over HTTP. Do **not** set `WATCHTOWER_NOTIFICATION_APPRISE_URL` for this.
+Gotify is built into Watchtower and talks to your Gotify server directly.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
@@ -82,10 +82,8 @@ Gotify is built into Watchtower and talks to your Gotify server over HTTP. Do **
 | `WATCHTOWER_NOTIFICATION_TITLE_TAG` | unset | Prefix in the notification title |
 | `WATCHTOWER_NOTIFICATION_SKIP_TITLE` | `false` | Do not send a title |
 | `WATCHTOWER_NO_STARTUP_MESSAGE` | `false` | Do not notify when Watchtower starts |
-| `WATCHTOWER_NOTIFICATION_URL` | unset | Extra [Apprise URLs](https://github.com/caronc/apprise/wiki) (Discord, Telegram, …) |
-| `WATCHTOWER_NOTIFICATION_APPRISE_CONFIG` | unset | Path inside the container to an Apprise config file |
-| `WATCHTOWER_NOTIFICATION_APPRISE_URL` | unset | Optional external Apprise API; not used for Gotify |
-| `WATCHTOWER_NOTIFICATION_APPRISE_KEY` | unset | API key, only used with `WATCHTOWER_NOTIFICATION_APPRISE_URL` |
+| `WATCHTOWER_NOTIFICATION_URL` | unset | `gotifys://host/token` or other bundled service URLs |
+| `WATCHTOWER_NOTIFICATION_APPRISE_CONFIG` | unset | Optional Apprise config file path inside this container |
 
 Legacy email/slack/msteams flags still work. Prefer Gotify's dedicated variables above, or `WATCHTOWER_NOTIFICATION_URL` for other Apprise services.
 

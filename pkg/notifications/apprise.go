@@ -2,10 +2,8 @@ package notifications
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"os/exec"
 	"strings"
@@ -99,78 +97,6 @@ func (n *appriseTypeNotifier) AddLogHook() {
 	log.AddHook(n)
 
 	go sendNotifications(n)
-}
-
-type appriseNotificationRequest struct {
-	URLs   []string `json:"urls,omitempty"`
-	Body   string   `json:"body"`
-	Title  string   `json:"title,omitempty"`
-	Format string   `json:"format"`
-	Type   string   `json:"type"`
-}
-
-type httpAppriseRouter struct {
-	client     *http.Client
-	notifyURL  string
-	urls       []string
-	useKeyMode bool
-}
-
-func newHTTPAppriseRouter(appriseURL, appriseKey string, urls []string) *httpAppriseRouter {
-	baseURL := strings.TrimRight(appriseURL, "/")
-	notifyURL := baseURL + "/notify/"
-	if appriseKey != "" {
-		notifyURL = baseURL + "/notify/" + appriseKey
-	}
-
-	return &httpAppriseRouter{
-		client:     &http.Client{Timeout: 30 * time.Second},
-		notifyURL:  notifyURL,
-		urls:       urls,
-		useKeyMode: appriseKey != "",
-	}
-}
-
-func (r *httpAppriseRouter) Send(message string, params *notificationParams) []error {
-	reqBody := appriseNotificationRequest{
-		Body:   message,
-		Format: "text",
-		Type:   "info",
-	}
-
-	if !r.useKeyMode {
-		reqBody.URLs = r.urls
-	}
-
-	if params != nil {
-		if title, ok := params.Title(); ok {
-			reqBody.Title = title
-		}
-	}
-
-	payload, err := json.Marshal(reqBody)
-	if err != nil {
-		return []error{fmt.Errorf("failed to marshal notification request: %w", err)}
-	}
-
-	req, err := http.NewRequest(http.MethodPost, r.notifyURL, bytes.NewReader(payload))
-	if err != nil {
-		return []error{fmt.Errorf("failed to create notification request: %w", err)}
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := r.client.Do(req)
-	if err != nil {
-		return perURLErrors(r.urls, fmt.Errorf("failed to send apprise notification: %w", err))
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return perURLErrors(r.urls, fmt.Errorf("apprise API returned status %d: %s", resp.StatusCode, strings.TrimSpace(string(body))))
-	}
-
-	return make([]error, len(r.urls))
 }
 
 func perURLErrors(urls []string, err error) []error {
@@ -292,7 +218,7 @@ func usesStdoutOnly(urls []string, stdout bool) bool {
 	return true
 }
 
-func createNotifier(appriseURL, appriseKey, appriseConfig string, urls []string, level log.Level, tplString string, legacy bool, data StaticData, stdout bool, delay time.Duration, gotifySkipVerify bool) *appriseTypeNotifier {
+func createNotifier(appriseConfig string, urls []string, level log.Level, tplString string, legacy bool, data StaticData, stdout bool, delay time.Duration, gotifySkipVerify bool) *appriseTypeNotifier {
 	tpl, err := getNotificationTemplate(tplString, legacy)
 	if err != nil {
 		log.Errorf("Could not use configured notification template: %s. Using default template", err)
@@ -319,16 +245,10 @@ func createNotifier(appriseURL, appriseKey, appriseConfig string, urls []string,
 		}
 
 		var appriseRouter router
-		hasRemote := appriseURL != ""
 		hasOther := len(otherURLs) > 0 || appriseConfig != ""
-		switch {
-		case !hasRemote && !hasOther:
-			appriseRouter = nil
-		case hasRemote:
-			appriseRouter = newHTTPAppriseRouter(appriseURL, appriseKey, otherURLs)
-		default:
+		if hasOther {
 			if _, err := lookPath(appriseBin); err != nil {
-				log.Fatal("Failed to initialize Apprise notifications: the bundled `apprise` CLI was not found. Use the official Watchtower image (Apprise is included), install Apprise on the host, or set --notification-apprise-url to an external Apprise API")
+				log.Fatal("Failed to initialize extra notification URLs: install/use the official Watchtower image, which bundles Apprise in the same container. Gotify does not need Apprise.")
 			}
 			appriseRouter = newCLIAppriseRouter(otherURLs, appriseConfig)
 		}

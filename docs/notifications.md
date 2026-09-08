@@ -1,14 +1,12 @@
 # Notifications
 
-Watchtower sends notifications when containers are updated. The official image ships with
-[Apprise](https://github.com/caronc/apprise) installed (the same library [Uptime Kuma](https://github.com/louislam/uptime-kuma) uses),
-so a separate Apprise container is **not** required.
+Watchtower sends notifications when containers are updated. There is **no second Apprise container**. Gotify is built into Watchtower. Other services (Discord, Telegram, email, …) use Apprise that is already inside the same image.
 
 Notifications are triggered from [logrus](http://github.com/sirupsen/logrus) hooks.
 
 ## Gotify (built in)
 
-Gotify is sent directly over HTTP. You do **not** need `WATCHTOWER_NOTIFICATION_APPRISE_URL`, a sidecar Apprise container, or the Apprise CLI.
+Gotify is sent directly to your Gotify server. There is no Apprise service to run.
 
 Either of these is enough:
 
@@ -136,13 +134,6 @@ You can define multiple services by space-separating the URLs.
     ```
 
 See [Compose and environment variables](compose.md) for a full env reference.
-
-### Optional external Apprise API
-
-The image does not need `caronc/apprise`. If you already run an [Apprise API](https://github.com/caronc/apprise-api) server, you can still point Watchtower at it:
-
--   `--notification-apprise-url` (env. `WATCHTOWER_NOTIFICATION_APPRISE_URL`): Apprise API base URL (for example `http://apprise:8000`). When set, Watchtower uses HTTP instead of the bundled CLI.
--   `--notification-apprise-key` (env. `WATCHTOWER_NOTIFICATION_APPRISE_KEY`): Optional API key / persistent config name. Notifications are sent to `/notify/{key}`.
 
 ## Simple templates
 
@@ -416,4 +407,4 @@ docker run -d \
 
 ### Gotify
 
-Gotify is documented at the top of this page. Use `WATCHTOWER_NOTIFICATIONS=gotify` plus `WATCHTOWER_NOTIFICATION_GOTIFY_URL` and `WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN`. Do not set `WATCHTOWER_NOTIFICATION_APPRISE_URL`.
+Gotify is documented at the top of this page. Use `WATCHTOWER_NOTIFICATIONS=gotify` plus `WATCHTOWER_NOTIFICATION_GOTIFY_URL` and `WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN`.

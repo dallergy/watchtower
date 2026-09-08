@@ -87,7 +87,7 @@ updt1 (mock/updt1:latest): Updated
 			It("should be added to the logrus hooks", func() {
 				level := logrus.TraceLevel
 				hooksBefore := len(logrus.StandardLogger().Hooks[level])
-				notifier := createNotifier("", "", "", []string{}, level, "", true, StaticData{}, false, time.Second, false)
+				notifier := createNotifier("", []string{}, level, "", true, StaticData{}, false, time.Second, false)
 				notifier.AddLogHook()
 				hooksAfter := len(logrus.StandardLogger().Hooks[level])
 				Expect(hooksAfter).To(BeNumerically(">", hooksBefore))
@@ -96,7 +96,7 @@ updt1 (mock/updt1:latest): Updated
 		When("it is being added a second time", func() {
 			It("should not be added to the logrus hooks", func() {
 				level := logrus.TraceLevel
-				notifier := createNotifier("", "", "", []string{}, level, "", true, StaticData{}, false, time.Second, false)
+				notifier := createNotifier("", []string{}, level, "", true, StaticData{}, false, time.Second, false)
 				notifier.AddLogHook()
 				hooksBefore := len(logrus.StandardLogger().Hooks[level])
 				notifier.AddLogHook()
@@ -113,7 +113,7 @@ updt1 (mock/updt1:latest): Updated
 				cmd := new(cobra.Command)
 				flags.RegisterNotificationFlags(cmd)
 
-				notifier := createNotifier("", "", "", []string{}, logrus.TraceLevel, "", true, StaticData{}, false, time.Second, false)
+				notifier := createNotifier("", []string{}, logrus.TraceLevel, "", true, StaticData{}, false, time.Second, false)
 
 				entries := []*logrus.Entry{
 					{
@@ -268,7 +268,7 @@ Turns out everything is on fire
 	When("batching notifications", func() {
 		When("no messages are queued", func() {
 			It("should not send any notification", func() {
-				notifier := createNotifier("", "", "", []string{"logger://"}, allButTrace, "", true, StaticData{}, false, time.Duration(0), false)
+				notifier := createNotifier("", []string{"logger://"}, allButTrace, "", true, StaticData{}, false, time.Duration(0), false)
 				notifier.StartNotification()
 				notifier.SendNotification(nil)
 				Consistently(logBuffer).ShouldNot(gbytes.Say(`This log message is sponsored by ContainrrrVPN`))
@@ -276,7 +276,7 @@ Turns out everything is on fire
 		})
 		When("at least one message is queued", func() {
 			It("should send a notification", func() {
-				notifier := createNotifier("", "", "", []string{"logger://"}, allButTrace, "", true, StaticData{}, false, time.Duration(0), false)
+				notifier := createNotifier("", []string{"logger://"}, allButTrace, "", true, StaticData{}, false, time.Duration(0), false)
 				notifier.AddLogHook()
 				notifier.StartNotification()
 				logrus.Info("This log message is sponsored by ContainrrrVPN")
@@ -288,7 +288,7 @@ Turns out everything is on fire
 
 	When("the title data field is empty", func() {
 		It("should not have set the title param", func() {
-			notifier := createNotifier("", "", "", []string{}, allButTrace, "", true, StaticData{
+			notifier := createNotifier("", []string{}, allButTrace, "", true, StaticData{
 				Host:  "test.host",
 				Title: "",
 			}, false, time.Second, false)

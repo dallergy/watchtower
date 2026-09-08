@@ -34,8 +34,6 @@ This can be used to avoid putting secrets in the configuration file or command l
 
 The following arguments are currently supported (including their corresponding `WATCHTOWER_` environment variables):
  - `notification-url`
- - `notification-apprise-key`
- - `notification-apprise-url`
  - `notification-email-server-password`
  - `notification-slack-hook-url`
  - `notification-msteams-hook`

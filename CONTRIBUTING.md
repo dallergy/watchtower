@@ -28,7 +28,7 @@ To build a Watchtower image of your own, use the self-contained Dockerfiles. As 
 - `dockerfiles/Dockerfile.dev-self-contained` will build an image based on your current local Watchtower files.
 - `dockerfiles/Dockerfile.self-contained` will build an image based on current Watchtower's repository on GitHub.
 
-The runtime image is Alpine with the Watchtower binary and the Apprise CLI (for notifications). There is no Grafana, Prometheus, or Apprise sidecar.
+The runtime image is Alpine with the Watchtower binary. Gotify is built in. Other notification services use Apprise shipped in the same image, not a second container.
 
 e.g.:
 ```bash

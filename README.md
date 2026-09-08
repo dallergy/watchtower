@@ -52,7 +52,7 @@ services:
       WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN: your.gotify.application.token
 ```
 
-Gotify is built in (no Apprise sidecar). Other services use bundled Apprise. See [docs/compose.md](docs/compose.md) and [docs/notifications.md](docs/notifications.md).
+Gotify is built in. Other channels use libraries inside the same image. There is no second notification container. See [docs/compose.md](docs/compose.md) and [docs/notifications.md](docs/notifications.md).
 
 ### Image availability
 

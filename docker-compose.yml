@@ -1,5 +1,5 @@
-# Lean Watchtower stack. Copy `.env.example` to `.env` for local overrides
-# (Compose substitutes ${VARS} from `.env`; listed `environment` keys are passed into the container).
+# One service: Watchtower. Notifications (Gotify) are built in.
+# Copy `.env.example` to `.env` for local overrides.
 
 services:
   watchtower:
@@ -8,19 +8,13 @@ services:
     restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      # Optional Apprise config file:
-      # - ./apprise.yml:/config/apprise.yml:ro
     environment:
       TZ: ${TZ:-UTC}
       WATCHTOWER_CLEANUP: ${WATCHTOWER_CLEANUP:-true}
-      WATCHTOWER_POLL_INTERVAL: ${WATCHTOWER_POLL_INTERVAL:-86400}
+      WATCHTOWER_POLL_INTERVAL: ${WATCHTOWER_POLL_INTERVAL:-7200}
       WATCHTOWER_NOTIFICATION_REPORT: ${WATCHTOWER_NOTIFICATION_REPORT:-true}
       WATCHTOWER_NO_STARTUP_MESSAGE: ${WATCHTOWER_NO_STARTUP_MESSAGE:-true}
       WATCHTOWER_NOTIFICATIONS_LEVEL: ${WATCHTOWER_NOTIFICATIONS_LEVEL:-info}
-      # Gotify is built in. No Apprise container and no WATCHTOWER_NOTIFICATION_APPRISE_URL.
       WATCHTOWER_NOTIFICATIONS: ${WATCHTOWER_NOTIFICATIONS:-}
       WATCHTOWER_NOTIFICATION_GOTIFY_URL: ${WATCHTOWER_NOTIFICATION_GOTIFY_URL:-}
       WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN: ${WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN:-}
-      # Gotify via URL (HTTPS). Do not set WATCHTOWER_NOTIFICATION_APPRISE_URL.
-      WATCHTOWER_NOTIFICATION_URL: ${WATCHTOWER_NOTIFICATION_URL:-}
-      WATCHTOWER_NOTIFICATION_APPRISE_CONFIG: ${WATCHTOWER_NOTIFICATION_APPRISE_CONFIG:-}

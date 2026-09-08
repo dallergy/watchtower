@@ -38,7 +38,7 @@ var _ = Describe("Gotify HTTP router", func() {
 		}
 
 		host := server.Listener.Addr().String()
-		notifier := createNotifier("", "", "", []string{"gotify://" + host + "/gtfy.token"}, allButTrace, "", true, StaticData{Title: "Watchtower updates"}, false, time.Duration(0), false)
+		notifier := createNotifier("", []string{"gotify://" + host + "/gtfy.token"}, allButTrace, "", true, StaticData{Title: "Watchtower updates"}, false, time.Duration(0), false)
 		Expect(notifier.Router).To(BeAssignableToTypeOf(&gotifyHTTPRouter{}))
 
 		errs := notifier.Router.Send("container nginx updated", notifier.params)
