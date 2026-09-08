@@ -292,7 +292,7 @@ func usesStdoutOnly(urls []string, stdout bool) bool {
 	return true
 }
 
-func createNotifier(appriseURL, appriseKey, appriseConfig string, urls []string, level log.Level, tplString string, legacy bool, data StaticData, stdout bool, delay time.Duration) *appriseTypeNotifier {
+func createNotifier(appriseURL, appriseKey, appriseConfig string, urls []string, level log.Level, tplString string, legacy bool, data StaticData, stdout bool, delay time.Duration, gotifySkipVerify bool) *appriseTypeNotifier {
 	tpl, err := getNotificationTemplate(tplString, legacy)
 	if err != nil {
 		log.Errorf("Could not use configured notification template: %s. Using default template", err)
@@ -308,20 +308,32 @@ func createNotifier(appriseURL, appriseKey, appriseConfig string, urls []string,
 		r = newStdoutRouter(stdout)
 	} else {
 		serviceURLs := filterNotificationURLs(urls)
-		hasRemote := appriseURL != ""
-		hasLocal := len(serviceURLs) > 0 || appriseConfig != ""
+		gotifyURLs, otherURLs := splitGotifyURLs(serviceURLs)
 
+		var gotifyRouter router
+		if len(gotifyURLs) > 0 {
+			gotifyRouter, err = newGotifyHTTPRouter(gotifyURLs, gotifySkipVerify)
+			if err != nil {
+				log.Fatal("Failed to initialize Gotify notifications: ", err)
+			}
+		}
+
+		var appriseRouter router
+		hasRemote := appriseURL != ""
+		hasOther := len(otherURLs) > 0 || appriseConfig != ""
 		switch {
-		case !hasRemote && !hasLocal:
-			r = &noopRouter{}
+		case !hasRemote && !hasOther:
+			appriseRouter = nil
 		case hasRemote:
-			r = newHTTPAppriseRouter(appriseURL, appriseKey, serviceURLs)
+			appriseRouter = newHTTPAppriseRouter(appriseURL, appriseKey, otherURLs)
 		default:
 			if _, err := lookPath(appriseBin); err != nil {
 				log.Fatal("Failed to initialize Apprise notifications: the bundled `apprise` CLI was not found. Use the official Watchtower image (Apprise is included), install Apprise on the host, or set --notification-apprise-url to an external Apprise API")
 			}
-			r = newCLIAppriseRouter(serviceURLs, appriseConfig)
+			appriseRouter = newCLIAppriseRouter(otherURLs, appriseConfig)
 		}
+
+		r = combineRouters(gotifyRouter, appriseRouter)
 	}
 
 	return &appriseTypeNotifier{

@@ -47,10 +47,12 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       WATCHTOWER_CLEANUP: "true"
-      WATCHTOWER_NOTIFICATION_URL: discord://webhook_id/webhook_token
+      WATCHTOWER_NOTIFICATIONS: gotify
+      WATCHTOWER_NOTIFICATION_GOTIFY_URL: https://gotify.example.com/
+      WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN: your.gotify.application.token
 ```
 
-Apprise is bundled in the image, so notifications do not need a second container. See [docs/compose.md](docs/compose.md) and [docs/notifications.md](docs/notifications.md).
+Gotify is built in (no Apprise sidecar). Other services use bundled Apprise. See [docs/compose.md](docs/compose.md) and [docs/notifications.md](docs/notifications.md).
 
 ### Image availability
 

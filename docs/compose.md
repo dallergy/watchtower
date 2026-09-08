@@ -8,7 +8,7 @@ Watchtower is a single container. The published image includes the updater **and
    ```bash
    cp .env.example .env
    ```
-2. Edit `.env` and set `WATCHTOWER_NOTIFICATION_URL` (and any other options you need).
+2. Edit `.env`. For Gotify set `WATCHTOWER_NOTIFICATIONS=gotify`, `WATCHTOWER_NOTIFICATION_GOTIFY_URL`, and `WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN`.
 3. Start Watchtower:
    ```bash
    docker compose up -d
@@ -32,7 +32,10 @@ services:
       WATCHTOWER_POLL_INTERVAL: "86400"
       WATCHTOWER_NOTIFICATION_REPORT: "true"
       WATCHTOWER_NO_STARTUP_MESSAGE: "true"
-      WATCHTOWER_NOTIFICATION_URL: discord://webhook_id/webhook_token
+      WATCHTOWER_NOTIFICATIONS: gotify
+      WATCHTOWER_NOTIFICATIONS_LEVEL: info
+      WATCHTOWER_NOTIFICATION_GOTIFY_URL: https://gotify.example.com/
+      WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN: your.gotify.application.token
 ```
 
 Build a local image instead of pulling:
@@ -61,24 +64,30 @@ Every CLI flag has a matching `WATCHTOWER_*` (or Docker) environment variable. B
 
 The Docker socket must be mounted at `/var/run/docker.sock` (read-only is enough).
 
-### Notifications (built-in Apprise)
+### Notifications
+
+Gotify is built into Watchtower and talks to your Gotify server over HTTP. Do **not** set `WATCHTOWER_NOTIFICATION_APPRISE_URL` for this.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `WATCHTOWER_NOTIFICATION_URL` | unset | Space-separated [Apprise URLs](https://github.com/caronc/apprise/wiki) |
+| `WATCHTOWER_NOTIFICATIONS` | unset | Set to `gotify` (add `email`, `slack`, or `msteams` if needed) |
+| `WATCHTOWER_NOTIFICATION_GOTIFY_URL` | unset | Gotify base URL, e.g. `https://gotify.example.com/` |
+| `WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN` | unset | Gotify application token |
+| `WATCHTOWER_NOTIFICATION_GOTIFY_TLS_SKIP_VERIFY` | `false` | Skip TLS verify (testing only) |
+| `WATCHTOWER_NOTIFICATIONS_LEVEL` | `info` | Minimum log level that is forwarded to notifications |
 | `WATCHTOWER_NOTIFICATION_REPORT` | `false` | Send a session summary instead of raw log lines |
 | `WATCHTOWER_NOTIFICATION_TEMPLATE` | built-in | Custom Go template for the message body |
-| `WATCHTOWER_NOTIFICATIONS_LEVEL` | `info` | Minimum log level that is forwarded to notifications |
 | `WATCHTOWER_NOTIFICATIONS_HOSTNAME` | container hostname | Hostname shown in the title |
 | `WATCHTOWER_NOTIFICATIONS_DELAY` | `0` | Seconds to wait before sending |
 | `WATCHTOWER_NOTIFICATION_TITLE_TAG` | unset | Prefix in the notification title |
 | `WATCHTOWER_NOTIFICATION_SKIP_TITLE` | `false` | Do not send a title |
 | `WATCHTOWER_NO_STARTUP_MESSAGE` | `false` | Do not notify when Watchtower starts |
+| `WATCHTOWER_NOTIFICATION_URL` | unset | Extra [Apprise URLs](https://github.com/caronc/apprise/wiki) (Discord, Telegram, …) |
 | `WATCHTOWER_NOTIFICATION_APPRISE_CONFIG` | unset | Path inside the container to an Apprise config file |
-| `WATCHTOWER_NOTIFICATION_APPRISE_URL` | unset | Optional external Apprise API; leave empty to use the bundled CLI |
+| `WATCHTOWER_NOTIFICATION_APPRISE_URL` | unset | Optional external Apprise API; not used for Gotify |
 | `WATCHTOWER_NOTIFICATION_APPRISE_KEY` | unset | API key, only used with `WATCHTOWER_NOTIFICATION_APPRISE_URL` |
 
-Legacy variables (`WATCHTOWER_NOTIFICATIONS=email|slack|msteams|gotify` plus the matching email/slack/msteams/gotify settings) still work and are converted to Apprise URLs. Prefer `WATCHTOWER_NOTIFICATION_URL`.
+Legacy email/slack/msteams flags still work. Prefer Gotify's dedicated variables above, or `WATCHTOWER_NOTIFICATION_URL` for other Apprise services.
 
 ### Container selection
 
