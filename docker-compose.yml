@@ -1,41 +1,23 @@
+# Lean Watchtower stack. Copy `.env.example` to `.env` for local overrides
+# (Compose substitutes ${VARS} from `.env`; listed `environment` keys are passed into the container).
+
 services:
   watchtower:
+    image: shounak6942/watchtower:latest
     container_name: watchtower
-    build:
-      context: ./
-      dockerfile: dockerfiles/Dockerfile.dev-self-contained
+    restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    ports:
-      - 8080:8080
-    command: --interval 10 --http-api-metrics --http-api-token demotoken --debug prometheus grafana parent child
-  prometheus:
-    container_name: prometheus
-    image: prom/prometheus:v2.55.1
-    volumes:
-      - ./prometheus/:/etc/prometheus/
-      - prometheus:/prometheus/
-    ports:
-      - 9090:9090
-  grafana:
-    container_name: grafana
-    image: grafana/grafana:11.4.0
-    ports:
-      - 3000:3000
+      # Optional Apprise config file:
+      # - ./apprise.yml:/config/apprise.yml:ro
     environment:
-      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource
-    volumes:
-      - grafana:/var/lib/grafana
-      - ./grafana:/etc/grafana/provisioning
-  parent:
-    image: nginx:1.27-alpine
-    container_name: parent
-  child:
-    image: nginx:1.27-alpine
-    labels:
-      com.centurylinklabs.watchtower.depends-on: parent
-    container_name: child
-
-volumes:
-  prometheus: {}
-  grafana: {}
+      TZ: ${TZ:-UTC}
+      WATCHTOWER_CLEANUP: ${WATCHTOWER_CLEANUP:-true}
+      WATCHTOWER_POLL_INTERVAL: ${WATCHTOWER_POLL_INTERVAL:-86400}
+      WATCHTOWER_NOTIFICATION_REPORT: ${WATCHTOWER_NOTIFICATION_REPORT:-true}
+      WATCHTOWER_NO_STARTUP_MESSAGE: ${WATCHTOWER_NO_STARTUP_MESSAGE:-true}
+      # Notifications use Apprise bundled in this image. Do not add a separate Apprise service.
+      # Set WATCHTOWER_NOTIFICATION_URL in `.env`, for example:
+      #   WATCHTOWER_NOTIFICATION_URL=discord://webhook_id/webhook_token
+      WATCHTOWER_NOTIFICATION_URL: ${WATCHTOWER_NOTIFICATION_URL:-}
+      WATCHTOWER_NOTIFICATION_APPRISE_CONFIG: ${WATCHTOWER_NOTIFICATION_APPRISE_CONFIG:-}

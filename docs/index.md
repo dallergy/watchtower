@@ -57,10 +57,14 @@ the following command:
 === "docker-compose.yml"
 
     ```yaml
-    version: "3"
     services:
       watchtower:
         image: shounak6942/watchtower
+        restart: unless-stopped
         volumes:
-          - /var/run/docker.sock:/var/run/docker.sock
+          - /var/run/docker.sock:/var/run/docker.sock:ro
+        environment:
+          WATCHTOWER_CLEANUP: "true"
     ```
+
+Notifications use Apprise bundled in the image. See [Compose and environment variables](compose.md) and [Notifications](notifications.md).

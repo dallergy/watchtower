@@ -31,9 +31,26 @@ Watchtower will pull down your new image, gracefully shut down your existing con
 ```
 $ docker run --detach \
     --name watchtower \
+    --restart unless-stopped \
     --volume /var/run/docker.sock:/var/run/docker.sock \
     shounak6942/watchtower:latest
 ```
+
+Or with Compose (`cp .env.example .env` then `docker compose up -d`):
+
+```yaml
+services:
+  watchtower:
+    image: shounak6942/watchtower:latest
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      WATCHTOWER_CLEANUP: "true"
+      WATCHTOWER_NOTIFICATION_URL: discord://webhook_id/webhook_token
+```
+
+Apprise is bundled in the image, so notifications do not need a second container. See [docs/compose.md](docs/compose.md) and [docs/notifications.md](docs/notifications.md).
 
 ### Image availability
 

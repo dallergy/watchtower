@@ -34,9 +34,4 @@ scrape_configs:
 
 Replace `demotoken` with the Bearer token you have set accordingly.
 
-## Demo
-
-The repository contains a demo with prometheus and grafana, available through `docker-compose.yml`. This demo
-is preconfigured with a dashboard, which will look something like this:
-
-![grafana metrics](assets/grafana-dashboard.png)
+Enable the endpoint on Watchtower with `WATCHTOWER_HTTP_API_METRICS=true`, `WATCHTOWER_HTTP_API_TOKEN`, and a port mapping for `8080`. Watchtower does not ship Prometheus or Grafana.

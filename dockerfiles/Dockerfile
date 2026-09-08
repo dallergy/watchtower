@@ -1,22 +1,20 @@
-FROM --platform=$BUILDPLATFORM alpine:3.21 as alpine
+FROM alpine:3.21
 
-RUN apk add --no-cache \
-    ca-certificates \
-    tzdata
-
-FROM scratch
 LABEL "com.centurylinklabs.watchtower"="true"
 
-COPY --from=alpine \
-    /etc/ssl/certs/ca-certificates.crt \
-    /etc/ssl/certs/ca-certificates.crt
-COPY --from=alpine \
-    /usr/share/zoneinfo \
-    /usr/share/zoneinfo
+RUN apk add --no-cache \
+        ca-certificates \
+        tzdata \
+        python3 \
+        py3-pip \
+    && pip3 install --no-cache-dir --break-system-packages "apprise==1.9.3" \
+    && apk del --no-network py3-pip \
+    && find /usr -type d -name '__pycache__' -prune -exec rm -rf {} + || true \
+    && rm -rf /root/.cache /tmp/* /var/cache/apk/*
 
 EXPOSE 8080
 
-COPY watchtower /
+COPY watchtower /watchtower
 
 HEALTHCHECK CMD [ "/watchtower", "--health-check"]
 
