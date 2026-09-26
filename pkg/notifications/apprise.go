@@ -334,6 +334,10 @@ func createRouter(appriseURL, appriseKey string, urls []string, stdout bool, got
 			if gotifySkipVerify {
 				u = withTLSVerifyDisabled(u)
 			}
+			if apprise.Scheme(u) == "gotify" {
+				// earlier releases of this fork used HTTPS for gotify:// URLs with a public host name
+				LocalLog.Warn("gotify:// notifications are sent over plain HTTP, use gotifys:// for servers that use HTTPS")
+			}
 			nativeURLs = append(nativeURLs, u)
 		case appriseURL != "":
 			forwardedURLs = append(forwardedURLs, u)
