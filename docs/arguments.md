@@ -168,13 +168,15 @@ Environment Variable: DOCKER_HOST
 ```
 
 ## Docker API version
-The API version to use by the Docker client for connecting to the Docker daemon. The minimum supported version is 1.40.
+Pins the API version used by the Docker client when connecting to the Docker daemon. When left empty, the
+highest version supported by both Watchtower and the daemon is negotiated automatically, so this rarely needs
+to be set. The minimum supported version is 1.40 (Docker Engine 19.03).
 
 ```text
             Argument: --api-version, -a
 Environment Variable: DOCKER_API_VERSION
                 Type: String
-             Default: "1.40"
+             Default: (negotiated)
 ```
 
 ## Include restarting

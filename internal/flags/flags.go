@@ -16,7 +16,7 @@ import (
 )
 
 // DockerAPIMinVersion is the minimum version of the docker api required to
-// use watchtower. Modern Docker Engine versions require at least 1.40.
+// use watchtower. Unless pinned using --api-version, the version is negotiated with the daemon.
 const DockerAPIMinVersion string = "1.40"
 
 var defaultInterval = int((time.Hour * 24).Seconds())
@@ -26,7 +26,7 @@ func RegisterDockerFlags(rootCmd *cobra.Command) {
 	flags := rootCmd.PersistentFlags()
 	flags.StringP("host", "H", envString("DOCKER_HOST"), "daemon socket to connect to")
 	flags.BoolP("tlsverify", "v", envBool("DOCKER_TLS_VERIFY"), "use TLS and verify the remote")
-	flags.StringP("api-version", "a", envString("DOCKER_API_VERSION"), "api version to use by docker client")
+	flags.StringP("api-version", "a", envString("DOCKER_API_VERSION"), "api version to use by docker client (negotiated with the daemon when empty)")
 }
 
 // RegisterSystemFlags that are used by watchtower to modify the program flow
@@ -435,7 +435,6 @@ func envDuration(key string) time.Duration {
 func SetDefaults() {
 	viper.AutomaticEnv()
 	viper.SetDefault("DOCKER_HOST", "unix:///var/run/docker.sock")
-	viper.SetDefault("DOCKER_API_VERSION", DockerAPIMinVersion)
 	viper.SetDefault("WATCHTOWER_POLL_INTERVAL", defaultInterval)
 	viper.SetDefault("WATCHTOWER_TIMEOUT", time.Second*10)
 	viper.SetDefault("WATCHTOWER_NOTIFICATIONS", []string{})
@@ -691,23 +690,6 @@ func flagIsEnabled(flags *pflag.FlagSet, name string) bool {
 		log.Fatalf(`The flag %q is not defined`, name)
 	}
 	return value
-}
-
-func appendFlagValue(flags *pflag.FlagSet, name string, values ...string) error {
-	flag := flags.Lookup(name)
-	if flag == nil {
-		return fmt.Errorf(`invalid flag name %q`, name)
-	}
-
-	if flagValues, ok := flag.Value.(pflag.SliceValue); ok {
-		for _, value := range values {
-			_ = flagValues.Append(value)
-		}
-	} else {
-		return fmt.Errorf(`the value for flag %q is not a slice value`, name)
-	}
-
-	return nil
 }
 
 func setFlagIfDefault(flags *pflag.FlagSet, name string, value string) {

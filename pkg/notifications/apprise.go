@@ -12,8 +12,8 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/containrrr/watchtower/pkg/notifications/templates"
-	t "github.com/containrrr/watchtower/pkg/types"
+	"github.com/dallergy/watchtower/pkg/notifications/templates"
+	t "github.com/dallergy/watchtower/pkg/types"
 	log "github.com/sirupsen/logrus"
 )
 

@@ -14,11 +14,11 @@
   <a href="https://codecov.io/gh/dallergy/watchtower">
     <img alt="Codecov" src="https://codecov.io/gh/dallergy/watchtower/branch/main/graph/badge.svg">
   </a>
-  <a href="https://godoc.org/github.com/containrrr/watchtower">
-    <img alt="GoDoc" src="https://godoc.org/github.com/containrrr/watchtower?status.svg" />
+  <a href="https://godoc.org/github.com/dallergy/watchtower">
+    <img alt="GoDoc" src="https://godoc.org/github.com/dallergy/watchtower?status.svg" />
   </a>
-  <a href="https://goreportcard.com/report/github.com/containrrr/watchtower">
-    <img alt="Go Report Card" src="https://goreportcard.com/badge/github.com/containrrr/watchtower" />
+  <a href="https://goreportcard.com/report/github.com/dallergy/watchtower">
+    <img alt="Go Report Card" src="https://goreportcard.com/badge/github.com/dallergy/watchtower" />
   </a>
   <a href="https://github.com/dallergy/watchtower/releases">
     <img alt="latest version" src="https://img.shields.io/github/tag/dallergy/watchtower.svg" />
@@ -26,7 +26,7 @@
   <a href="https://www.apache.org/licenses/LICENSE-2.0">
     <img alt="Apache-2.0 License" src="https://img.shields.io/github/license/dallergy/watchtower.svg" />
   </a>
-  <a href="https://github.com/containrrr/watchtower/#contributors">
+  <a href="https://github.com/dallergy/watchtower/#contributors">
     <img alt="All Contributors" src="https://img.shields.io/github/all-contributors/containrrr/watchtower" />
   </a>
   <a href="https://hub.docker.com/r/shounak6942/watchtower">
@@ -35,7 +35,7 @@
 </p>
 
 !!! note "Community-maintained fork"
-    The original [containrrr/watchtower](https://github.com/containrrr/watchtower) project is no longer maintained.
+    The original [containrrr/watchtower](https://github.com/dallergy/watchtower) project is no longer maintained.
     This fork is actively maintained at [dallergy/watchtower](https://github.com/dallergy/watchtower) and published to Docker Hub as `shounak6942/watchtower`.
 
 ## Quick Start

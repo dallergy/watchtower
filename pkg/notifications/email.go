@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	t "github.com/containrrr/watchtower/pkg/types"
+	t "github.com/dallergy/watchtower/pkg/types"
 	log "github.com/sirupsen/logrus"
 )
 

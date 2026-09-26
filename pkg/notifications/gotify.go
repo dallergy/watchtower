@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"strings"
 
-	t "github.com/containrrr/watchtower/pkg/types"
+	t "github.com/dallergy/watchtower/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
