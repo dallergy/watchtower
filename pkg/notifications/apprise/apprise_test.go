@@ -369,8 +369,8 @@ func TestPushover(t *testing.T) {
 
 func TestTeams(t *testing.T) {
 	for rawURL, expected := range map[string]string{
-		"msteams://aaa@bbb/ccc/ddd/":                                                       "https://outlook.office.com/webhook/aaa@bbb/IncomingWebhook/ccc/ddd",
-		"msteams://contoso/aaa@bbb/ccc/ddd/eee":                                            "https://contoso.webhook.office.com/webhookb2/aaa@bbb/IncomingWebhook/ccc/ddd/eee",
+		"msteams://aaa@bbb/ccc/ddd/":            "https://outlook.office.com/webhook/aaa@bbb/IncomingWebhook/ccc/ddd",
+		"msteams://contoso/aaa@bbb/ccc/ddd/eee": "https://contoso.webhook.office.com/webhookb2/aaa@bbb/IncomingWebhook/ccc/ddd/eee",
 		"https://contoso.webhook.office.com/webhookb2/aaa@bbb/IncomingWebhook/ccc/ddd/eee": "https://contoso.webhook.office.com/webhookb2/aaa@bbb/IncomingWebhook/ccc/ddd/eee",
 	} {
 		server := newTestServer(t)
