@@ -2,18 +2,20 @@ package notifications
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"strings"
 	"text/template"
 	"time"
 
-	"github.com/containrrr/watchtower/pkg/notifications/templates"
-	t "github.com/containrrr/watchtower/pkg/types"
+	"github.com/dallergy/watchtower/pkg/notifications/apprise"
+	"github.com/dallergy/watchtower/pkg/notifications/templates"
+	t "github.com/dallergy/watchtower/pkg/types"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -24,7 +26,8 @@ const (
 	appriseType     = "apprise"
 	stdoutScheme    = "stdout"
 	legacyStdoutURL = "logger://"
-	appriseBin      = "apprise"
+	// sendTimeout limits how long delivering a single notification to all services may take
+	sendTimeout = 2 * time.Minute
 )
 
 type notificationParams struct {
@@ -41,15 +44,6 @@ func (p *notificationParams) Title() (string, bool) {
 type router interface {
 	Send(message string, params *notificationParams) []error
 }
-
-type execRunner func(name string, args ...string) ([]byte, error)
-type lookPather func(file string) (string, error)
-
-var runCommand execRunner = func(name string, args ...string) ([]byte, error) {
-	return exec.Command(name, args...).CombinedOutput()
-}
-
-var lookPath lookPather = exec.LookPath
 
 // Implements Notifier, logrus.Hook
 type appriseTypeNotifier struct {
@@ -131,6 +125,20 @@ func newHTTPAppriseRouter(appriseURL, appriseKey string, urls []string) *httpApp
 	}
 }
 
+// ServiceError is a failure to deliver a notification to one of the configured services
+type ServiceError struct {
+	Service string
+	Err     error
+}
+
+func (e *ServiceError) Error() string {
+	return fmt.Sprintf("%s: %v", e.Service, e.Err)
+}
+
+func (e *ServiceError) Unwrap() error {
+	return e.Err
+}
+
 func (r *httpAppriseRouter) Send(message string, params *notificationParams) []error {
 	reqBody := appriseNotificationRequest{
 		Body:   message,
@@ -161,25 +169,49 @@ func (r *httpAppriseRouter) Send(message string, params *notificationParams) []e
 
 	resp, err := r.client.Do(req)
 	if err != nil {
-		return perURLErrors(r.urls, fmt.Errorf("failed to send apprise notification: %w", err))
+		return []error{&ServiceError{Service: appriseType, Err: fmt.Errorf("failed to reach the Apprise API: %w", err)}}
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return perURLErrors(r.urls, fmt.Errorf("apprise API returned status %d: %s", resp.StatusCode, strings.TrimSpace(string(body))))
+		return []error{&ServiceError{Service: appriseType, Err: fmt.Errorf("the Apprise API returned status %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))}}
 	}
 
-	return make([]error, len(r.urls))
+	return nil
 }
 
-func perURLErrors(urls []string, err error) []error {
-	if len(urls) == 0 {
-		return []error{err}
+// serviceRouter delivers notifications to the natively supported services
+type serviceRouter struct {
+	services []apprise.Service
+}
+
+func newServiceRouter(urls []string, opts apprise.Options) (*serviceRouter, error) {
+	services := make([]apprise.Service, 0, len(urls))
+	for _, u := range urls {
+		service, err := apprise.Parse(u, opts)
+		if err != nil {
+			return nil, err
+		}
+		services = append(services, service)
 	}
-	errs := make([]error, len(urls))
-	for i := range urls {
-		errs[i] = err
+	return &serviceRouter{services: services}, nil
+}
+
+func (r *serviceRouter) Send(message string, params *notificationParams) []error {
+	msg := apprise.Message{Body: message}
+	if title, ok := params.Title(); ok {
+		msg.Title = title
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), sendTimeout)
+	defer cancel()
+
+	var errs []error
+	for _, service := range r.services {
+		if err := service.Send(ctx, msg); err != nil {
+			errs = append(errs, &ServiceError{Service: service.Scheme(), Err: err})
+		}
 	}
 	return errs
 }
@@ -216,48 +248,6 @@ func (r *stdoutRouter) Send(message string, params *notificationParams) []error 
 		return []error{err}
 	}
 	return nil
-}
-
-type cliAppriseRouter struct {
-	urls   []string
-	config string
-	bin    string
-	run    execRunner
-}
-
-func newCLIAppriseRouter(urls []string, config string) *cliAppriseRouter {
-	return &cliAppriseRouter{
-		urls:   urls,
-		config: config,
-		bin:    appriseBin,
-		run:    runCommand,
-	}
-}
-
-func (r *cliAppriseRouter) Send(message string, params *notificationParams) []error {
-	args := []string{"--input-format", "text", "--notification-type", "info", "--body", message}
-	if params != nil {
-		if title, ok := params.Title(); ok {
-			args = append(args, "--title", title)
-		}
-	}
-	if r.config != "" {
-		args = append(args, "--config", r.config)
-	}
-	args = append(args, r.urls...)
-
-	out, err := r.run(r.bin, args...)
-	if err != nil {
-		detail := strings.TrimSpace(string(out))
-		if detail == "" {
-			detail = err.Error()
-		} else {
-			detail = fmt.Sprintf("%s: %s", err.Error(), detail)
-		}
-		return perURLErrors(r.urls, fmt.Errorf("failed to send apprise notification: %s", detail))
-	}
-
-	return make([]error, len(r.urls))
 }
 
 func filterNotificationURLs(urls []string) []string {
@@ -303,37 +293,17 @@ func createNotifier(appriseURL, appriseKey, appriseConfig string, urls []string,
 		params.title = data.Title
 	}
 
-	var r router
-	if usesStdoutOnly(urls, stdout) {
-		r = newStdoutRouter(stdout)
-	} else {
-		serviceURLs := filterNotificationURLs(urls)
-		gotifyURLs, otherURLs := splitGotifyURLs(serviceURLs)
-
-		var gotifyRouter router
-		if len(gotifyURLs) > 0 {
-			gotifyRouter, err = newGotifyHTTPRouter(gotifyURLs, gotifySkipVerify)
-			if err != nil {
-				log.Fatal("Failed to initialize Gotify notifications: ", err)
-			}
+	if appriseConfig != "" {
+		configURLs, err := apprise.LoadConfig(appriseConfig)
+		if err != nil {
+			log.Fatal("Failed to load the Apprise config: ", err)
 		}
+		urls = append(urls, configURLs...)
+	}
 
-		var appriseRouter router
-		hasRemote := appriseURL != ""
-		hasOther := len(otherURLs) > 0 || appriseConfig != ""
-		switch {
-		case !hasRemote && !hasOther:
-			appriseRouter = nil
-		case hasRemote:
-			appriseRouter = newHTTPAppriseRouter(appriseURL, appriseKey, otherURLs)
-		default:
-			if _, err := lookPath(appriseBin); err != nil {
-				log.Fatal("Failed to initialize Apprise notifications: the bundled `apprise` CLI was not found. Use the official Watchtower image (Apprise is included), install Apprise on the host, or set --notification-apprise-url to an external Apprise API")
-			}
-			appriseRouter = newCLIAppriseRouter(otherURLs, appriseConfig)
-		}
-
-		r = combineRouters(gotifyRouter, appriseRouter)
+	r, err := createRouter(appriseURL, appriseKey, urls, stdout, gotifySkipVerify)
+	if err != nil {
+		log.Fatal("Failed to initialize notifications: ", err)
 	}
 
 	return &appriseTypeNotifier{
@@ -350,22 +320,113 @@ func createNotifier(appriseURL, appriseKey, appriseConfig string, urls []string,
 	}
 }
 
+// createRouter sends notifications for built in services natively, while other services are
+// forwarded to an external Apprise API (when configured)
+func createRouter(appriseURL, appriseKey string, urls []string, stdout bool, gotifySkipVerify bool) (router, error) {
+	if usesStdoutOnly(urls, stdout) {
+		return newStdoutRouter(stdout), nil
+	}
+
+	var nativeURLs, forwardedURLs []string
+	for _, u := range filterNotificationURLs(urls) {
+		switch {
+		case apprise.IsSupported(u):
+			if gotifySkipVerify {
+				u = withTLSVerifyDisabled(u)
+			}
+			if apprise.Scheme(u) == "gotify" {
+				// earlier releases of this fork used HTTPS for gotify:// URLs with a public host name
+				LocalLog.Warn("gotify:// notifications are sent over plain HTTP, use gotifys:// for servers that use HTTPS")
+			}
+			nativeURLs = append(nativeURLs, u)
+		case appriseURL != "":
+			forwardedURLs = append(forwardedURLs, u)
+		default:
+			scheme := apprise.Scheme(u)
+			return nil, fmt.Errorf("%w; set --notification-apprise-url to forward it to an Apprise API server",
+				apprise.UnsupportedError{Scheme: scheme})
+		}
+	}
+
+	var routers []router
+	if hasLegacyStdoutURL(urls) {
+		routers = append(routers, newStdoutRouter(false))
+	}
+	if len(nativeURLs) > 0 {
+		native, err := newServiceRouter(nativeURLs, apprise.Options{})
+		if err != nil {
+			return nil, err
+		}
+		routers = append(routers, native)
+	}
+	if appriseURL != "" && (len(forwardedURLs) > 0 || appriseKey != "") {
+		routers = append(routers, newHTTPAppriseRouter(appriseURL, appriseKey, forwardedURLs))
+	}
+
+	return combineRouters(routers...), nil
+}
+
+// withTLSVerifyDisabled applies the legacy Gotify TLS flag to Gotify URLs
+func withTLSVerifyDisabled(u string) string {
+	scheme := apprise.Scheme(u)
+	if (scheme != "gotify" && scheme != "gotifys") || strings.Contains(u, "verify=") {
+		return u
+	}
+	separator := "?"
+	if strings.Contains(u, "?") {
+		separator = "&"
+	}
+	return u + separator + "verify=no"
+}
+
+func hasLegacyStdoutURL(urls []string) bool {
+	for _, u := range urls {
+		if strings.TrimSpace(u) == legacyStdoutURL || apprise.Scheme(u) == stdoutScheme {
+			return true
+		}
+	}
+	return false
+}
+
+type fanoutRouter struct {
+	children []router
+}
+
+func (r *fanoutRouter) Send(message string, params *notificationParams) []error {
+	var errs []error
+	for _, child := range r.children {
+		errs = append(errs, child.Send(message, params)...)
+	}
+	return errs
+}
+
+func combineRouters(routers ...router) router {
+	switch len(routers) {
+	case 0:
+		return &noopRouter{}
+	case 1:
+		return routers[0]
+	default:
+		return &fanoutRouter{children: routers}
+	}
+}
+
 func sendNotifications(n *appriseTypeNotifier) {
 	for msg := range n.messages {
 		time.Sleep(n.delay)
 		errs := n.Router.Send(msg, n.params)
 
-		for i, err := range errs {
-			if err != nil {
-				scheme := "apprise"
-				if i < len(n.Urls) {
-					scheme = GetScheme(n.Urls[i])
-				}
-				LocalLog.WithFields(log.Fields{
-					"service": scheme,
-					"index":   i,
-				}).WithError(err).Error("Failed to send apprise notification")
+		for _, err := range errs {
+			if err == nil {
+				continue
 			}
+			fields := log.Fields{}
+			var serviceErr *ServiceError
+			if errors.As(err, &serviceErr) {
+				fields["service"] = serviceErr.Service
+				err = serviceErr.Err
+			}
+			LocalLog.WithFields(fields).WithError(err).Error("Failed to send notification")
 		}
 	}
 

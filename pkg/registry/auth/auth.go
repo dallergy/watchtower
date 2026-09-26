@@ -9,8 +9,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/containrrr/watchtower/pkg/registry/helpers"
-	"github.com/containrrr/watchtower/pkg/types"
+	"github.com/dallergy/watchtower/pkg/registry/helpers"
+	"github.com/dallergy/watchtower/pkg/types"
 	ref "github.com/distribution/reference"
 	"github.com/sirupsen/logrus"
 )
@@ -38,7 +38,7 @@ func GetToken(container types.Container, registryAuth string) (string, error) {
 	if res, err = client.Do(req); err != nil {
 		return "", err
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	v := res.Header.Get(ChallengeHeader)
 
 	logrus.WithFields(logrus.Fields{

@@ -1,51 +1,35 @@
+# Builds Watchtower from the local source tree:
 #
-# Builder
+#   docker build -f dockerfiles/Dockerfile.dev-self-contained -t watchtower .
 #
+# The builder always runs on the native platform and cross-compiles, so multi-platform builds
+# do not need emulation.
+FROM --platform=$BUILDPLATFORM golang:1.27-alpine AS builder
 
-FROM golang:alpine AS builder
+ARG TARGETOS
+ARG TARGETARCH
+ARG TARGETVARIANT
+ARG VERSION=dev
 
-WORKDIR /watchtower
-COPY go.mod .
-COPY go.sum .
+WORKDIR /src
+COPY go.mod go.sum ./
 RUN go mod download
 
-RUN apk add --no-cache \
-    alpine-sdk \
-    ca-certificates \
-    git \
-    tzdata
+COPY . .
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GOARM=${TARGETVARIANT#v} \
+    go build -trimpath -tags timetzdata \
+      -ldflags "-s -w -X github.com/dallergy/watchtower/internal/meta.Version=${VERSION}" \
+      -o /out/watchtower .
 
-COPY . /watchtower
-
-RUN \
-  cd /watchtower && \
-  \
-  GO111MODULE=on CGO_ENABLED=0 GOOS=linux go build -a -ldflags "-extldflags '-static' -X github.com/containrrr/watchtower/internal/meta.Version=$(git describe --tags)" . && \
-  GO111MODULE=on go test ./... -v
-
-
-#
-# watchtower
-#
-
-FROM alpine:3.21
+FROM scratch
 
 LABEL "com.centurylinklabs.watchtower"="true"
 
-RUN apk add --no-cache \
-        ca-certificates \
-        tzdata \
-        python3 \
-        py3-pip \
-    && pip3 install --no-cache-dir --break-system-packages "apprise==1.9.3" \
-    && apk del --no-network py3-pip \
-    && find /usr -type d -name '__pycache__' -prune -exec rm -rf {} + || true \
-    && rm -rf /root/.cache /tmp/* /var/cache/apk/*
-
-COPY --from=builder /watchtower/watchtower /watchtower
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=builder /out/watchtower /watchtower
 
 EXPOSE 8080
 
-HEALTHCHECK CMD [ "/watchtower", "--health-check"]
+HEALTHCHECK CMD ["/watchtower", "--health-check"]
 
 ENTRYPOINT ["/watchtower"]

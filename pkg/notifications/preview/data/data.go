@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/containrrr/watchtower/pkg/types"
+	"github.com/dallergy/watchtower/pkg/types"
 )
 
 type previewData struct {
@@ -47,9 +47,10 @@ func (pb *previewData) AddFromState(state State) {
 	name := pb.generateName()
 	image := pb.generateImageName(name)
 	var err error
-	if state == FailedState {
+	switch state {
+	case FailedState:
 		err = errors.New(pb.randomEntry(errorMessages))
-	} else if state == SkippedState {
+	case SkippedState:
 		err = errors.New(pb.randomEntry(skippedMessages))
 	}
 	pb.addContainer(containerStatus{

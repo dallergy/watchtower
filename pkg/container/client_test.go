@@ -1,23 +1,22 @@
 package container
 
 import (
-	"github.com/docker/docker/api/types/network"
 	"time"
 
-	"github.com/containrrr/watchtower/internal/util"
-	"github.com/containrrr/watchtower/pkg/container/mocks"
-	"github.com/containrrr/watchtower/pkg/filters"
-	t "github.com/containrrr/watchtower/pkg/types"
+	"github.com/dallergy/watchtower/internal/util"
+	"github.com/dallergy/watchtower/pkg/container/mocks"
+	"github.com/dallergy/watchtower/pkg/filters"
+	t "github.com/dallergy/watchtower/pkg/types"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/backend"
-	cli "github.com/docker/docker/client"
-	"github.com/docker/docker/errdefs"
+	cerrdefs "github.com/containerd/errdefs"
+	dc "github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
+	cli "github.com/moby/moby/client"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/ghttp"
 	"github.com/sirupsen/logrus"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	gt "github.com/onsi/gomega/types"
 
@@ -30,9 +29,11 @@ var _ = Describe("the client", func() {
 	var mockServer *ghttp.Server
 	BeforeEach(func() {
 		mockServer = ghttp.NewServer()
-		docker, _ = cli.NewClientWithOpts(
+		docker, _ = cli.New(
 			cli.WithHost(mockServer.URL()),
-			cli.WithHTTPClient(mockServer.HTTPTestServer.Client()))
+			cli.WithHTTPClient(mockServer.HTTPTestServer.Client()),
+			// Pin the API version, as the mock server does not handle version negotiation
+			cli.WithAPIVersion(cli.MaxAPIVersion))
 	})
 	AfterEach(func() {
 		mockServer.Close()
@@ -78,8 +79,8 @@ var _ = Describe("the client", func() {
 	When("removing a running container", func() {
 		When("the container still exist after stopping", func() {
 			It("should attempt to remove the container", func() {
-				container := MockContainer(WithContainerState(types.ContainerState{Running: true}))
-				containerStopped := MockContainer(WithContainerState(types.ContainerState{Running: false}))
+				container := MockContainer(WithContainerState(dc.State{Running: true}))
+				containerStopped := MockContainer(WithContainerState(dc.State{Running: false}))
 
 				cid := container.ContainerInfo().ID
 				mockServer.AppendHandlers(
@@ -94,7 +95,7 @@ var _ = Describe("the client", func() {
 		})
 		When("the container does not exist after stopping", func() {
 			It("should not cause an error", func() {
-				container := MockContainer(WithContainerState(types.ContainerState{Running: true}))
+				container := MockContainer(WithContainerState(dc.State{Running: true}))
 
 				cid := container.ContainerInfo().ID
 				mockServer.AppendHandlers(
@@ -134,7 +135,7 @@ var _ = Describe("the client", func() {
 				c := dockerClient{api: docker}
 
 				err := c.RemoveImageByID(t.ImageID(image))
-				Expect(errdefs.IsNotFound(err)).To(BeTrue())
+				Expect(cerrdefs.IsNotFound(err)).To(BeTrue())
 			})
 		})
 	})
@@ -267,38 +268,39 @@ var _ = Describe("the client", func() {
 				cmd := "exec-cmd"
 
 				mockServer.AppendHandlers(
-					// API.ContainerExecCreate
+					// API.ExecCreate
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("POST", HaveSuffix("containers/%v/exec", containerID)),
-						ghttp.VerifyJSONRepresenting(types.ExecConfig{
-							User:   user,
-							Detach: false,
-							Tty:    true,
+						ghttp.VerifyJSONRepresenting(dc.ExecCreateRequest{
+							User:         user,
+							Tty:          true,
+							AttachStdout: true,
+							AttachStderr: true,
 							Cmd: []string{
 								"sh",
 								"-c",
 								cmd,
 							},
 						}),
-						ghttp.RespondWithJSONEncoded(http.StatusOK, types.IDResponse{ID: execID}),
+						ghttp.RespondWithJSONEncoded(http.StatusOK, dc.ExecCreateResponse{ID: execID}),
 					),
-					// API.ContainerExecStart
+					// API.ExecStart (fallback, since attaching cannot hijack the connection to the mock server)
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("POST", HaveSuffix("exec/%v/start", execID)),
-						ghttp.VerifyJSONRepresenting(types.ExecStartCheck{
-							Detach: false,
+						ghttp.VerifyJSONRepresenting(dc.ExecStartRequest{
+							Detach: true,
 							Tty:    true,
 						}),
 						ghttp.RespondWith(http.StatusOK, nil),
 					),
-					// API.ContainerExecInspect
+					// API.ExecInspect
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("GET", HaveSuffix("exec/ex-exec-id/json")),
-						ghttp.RespondWithJSONEncoded(http.StatusOK, backend.ExecInspect{
+						ghttp.RespondWithJSONEncoded(http.StatusOK, dc.ExecInspectResponse{
 							ID:       execID,
 							Running:  false,
 							ExitCode: nil,
-							ProcessConfig: &backend.ExecProcessConfig{
+							ProcessConfig: &dc.ExecProcessConfig{
 								Entrypoint: "sh",
 								Arguments:  []string{"-c", cmd},
 								User:       user,
@@ -329,7 +331,7 @@ var _ = Describe("the client", func() {
 				endpoints := map[string]*network.EndpointSettings{
 					`test`: {Aliases: aliases},
 				}
-				container.containerInfo.NetworkSettings = &types.NetworkSettings{Networks: endpoints}
+				container.containerInfo.NetworkSettings = &dc.NetworkSettings{Networks: endpoints}
 				Expect(container.ContainerInfo().NetworkSettings.Networks[`test`].Aliases).To(Equal(aliases))
 				Expect(client.GetNetworkConfig(container).EndpointsConfig[`test`].Aliases).To(Equal([]string{"One", "Two", "Four"}))
 			})

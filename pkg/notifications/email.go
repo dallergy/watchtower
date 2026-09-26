@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	t "github.com/containrrr/watchtower/pkg/types"
+	t "github.com/dallergy/watchtower/pkg/types"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -52,8 +52,9 @@ func newEmailNotifier(c *cobra.Command) t.ConvertibleNotifier {
 }
 
 func (e *emailTypeNotifier) GetURL(c *cobra.Command) (string, error) {
+	// mailto uses STARTTLS when the server offers it, while mailtos requires TLS
 	scheme := "mailtos"
-	if e.Port == 25 || e.tlsSkipVerify {
+	if e.Port == 25 {
 		scheme = "mailto"
 	}
 
@@ -71,6 +72,9 @@ func (e *emailTypeNotifier) GetURL(c *cobra.Command) (string, error) {
 	q.Set("to", e.To)
 	if e.Server != "" {
 		q.Set("smtp", e.Server)
+	}
+	if e.tlsSkipVerify {
+		q.Set("verify", "no")
 	}
 	u.RawQuery = q.Encode()
 

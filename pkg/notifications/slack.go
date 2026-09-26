@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"strings"
 
-	t "github.com/containrrr/watchtower/pkg/types"
+	t "github.com/dallergy/watchtower/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -47,25 +47,23 @@ func (s *slackTypeNotifier) GetURL(c *cobra.Command) (string, error) {
 	parts := strings.Split(trimmedURL, "/")
 
 	if parts[0] == "discord.com" || parts[0] == "discordapp.com" {
-		log.Debug("Detected a discord slack wrapper URL, using apprise discord service")
+		log.Debug("Detected a discord slack wrapper URL, using the discord service")
+		if len(parts) < 4 {
+			return "", fmt.Errorf("invalid discord webhook URL")
+		}
 		webhookID := parts[len(parts)-3]
 		token := parts[len(parts)-2]
 
-		q := url.Values{}
-		if s.Username != "" {
-			q.Set("username", s.Username)
-		} else {
-			q.Set("username", "watchtower")
-		}
-		if s.IconURL != "" {
-			q.Set("avatar", s.IconURL)
+		botname := s.Username
+		if botname == "" {
+			botname = "watchtower"
 		}
 
-		appriseURL := fmt.Sprintf("discord://%s/%s", webhookID, token)
-		if encoded := q.Encode(); encoded != "" {
-			appriseURL += "?" + encoded
+		discordURL := fmt.Sprintf("discord://%s@%s/%s", url.PathEscape(botname), webhookID, token)
+		if s.IconURL != "" {
+			discordURL += "?" + url.Values{"avatar_url": {s.IconURL}}.Encode()
 		}
-		return appriseURL, nil
+		return discordURL, nil
 	}
 
 	webhookToken := strings.Replace(s.HookURL, "https://hooks.slack.com/services/", "", 1)
@@ -79,25 +77,25 @@ func (s *slackTypeNotifier) GetURL(c *cobra.Command) (string, error) {
 		botname = "watchtower"
 	}
 
-	appriseURL := fmt.Sprintf("slack://%s@%s/%s/%s", botname, tokenParts[0], tokenParts[1], tokenParts[2])
+	slackURL := fmt.Sprintf("slack://%s@%s/%s/%s", url.PathEscape(botname), tokenParts[0], tokenParts[1], tokenParts[2])
 
 	if s.Channel != "" {
 		channel := s.Channel
-		if !strings.HasPrefix(channel, "#") {
+		if !strings.HasPrefix(channel, "#") && !strings.HasPrefix(channel, "@") {
 			channel = "#" + channel
 		}
-		appriseURL += "/" + channel
+		slackURL += "/" + channel
 	}
 
 	q := url.Values{}
 	if s.IconURL != "" {
-		q.Set("image", s.IconURL)
+		q.Set("icon_url", s.IconURL)
 	} else if s.IconEmoji != "" {
-		q.Set("image", s.IconEmoji)
+		q.Set("icon_emoji", s.IconEmoji)
 	}
 	if encoded := q.Encode(); encoded != "" {
-		appriseURL += "?" + encoded
+		slackURL += "?" + encoded
 	}
 
-	return appriseURL, nil
+	return slackURL, nil
 }

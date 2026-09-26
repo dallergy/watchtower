@@ -3,10 +3,10 @@ package notifications
 import (
 	"time"
 
-	"github.com/containrrr/watchtower/internal/actions/mocks"
-	"github.com/containrrr/watchtower/internal/flags"
-	s "github.com/containrrr/watchtower/pkg/session"
-	. "github.com/onsi/ginkgo"
+	"github.com/dallergy/watchtower/internal/actions/mocks"
+	"github.com/dallergy/watchtower/internal/flags"
+	s "github.com/dallergy/watchtower/pkg/session"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/sirupsen/logrus"
@@ -70,6 +70,11 @@ var _ = Describe("Apprise", func() {
 			DisableColors:    true,
 			DisableTimestamp: true,
 		})
+	})
+
+	AfterEach(func() {
+		// Notifier hooks would otherwise keep receiving (and delaying) the log output of other specs
+		logrus.StandardLogger().ReplaceHooks(make(logrus.LevelHooks))
 	})
 
 	When("passing a common template name", func() {

@@ -1,21 +1,19 @@
-FROM alpine:3.21
+# Runtime image for the binaries built by GoReleaser (see goreleaser.yml).
+#
+# Watchtower is a static binary with the time zone database embedded, so the image only adds
+# CA certificates on top of an empty base: there are no OS packages to patch.
+FROM --platform=$BUILDPLATFORM alpine:3.24 AS certs
+
+FROM scratch
+ARG TARGETPLATFORM
 
 LABEL "com.centurylinklabs.watchtower"="true"
 
-RUN apk add --no-cache \
-        ca-certificates \
-        tzdata \
-        python3 \
-        py3-pip \
-    && pip3 install --no-cache-dir --break-system-packages "apprise==1.9.3" \
-    && apk del --no-network py3-pip \
-    && find /usr -type d -name '__pycache__' -prune -exec rm -rf {} + || true \
-    && rm -rf /root/.cache /tmp/* /var/cache/apk/*
+COPY --from=certs /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY $TARGETPLATFORM/watchtower /watchtower
 
 EXPOSE 8080
 
-COPY watchtower /watchtower
-
-HEALTHCHECK CMD [ "/watchtower", "--health-check"]
+HEALTHCHECK CMD ["/watchtower", "--health-check"]
 
 ENTRYPOINT ["/watchtower"]

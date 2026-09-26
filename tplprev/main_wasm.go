@@ -5,9 +5,9 @@ package main
 import (
 	"fmt"
 
-	"github.com/containrrr/watchtower/internal/meta"
-	"github.com/containrrr/watchtower/pkg/notifications/preview"
-	"github.com/containrrr/watchtower/pkg/notifications/preview/data"
+	"github.com/dallergy/watchtower/internal/meta"
+	"github.com/dallergy/watchtower/pkg/notifications/preview"
+	"github.com/dallergy/watchtower/pkg/notifications/preview/data"
 
 	"syscall/js"
 )
@@ -46,7 +46,7 @@ func jsTplPrev(this js.Value, args []js.Value) any {
 	var levels []data.LogLevel
 
 	if levelsArg.Type() == js.TypeString {
-		levels = data.LevelsFromString(statesArg.String())
+		levels = data.LevelsFromString(levelsArg.String())
 	} else {
 		for i := 0; i < levelsArg.Length(); i++ {
 			level := data.LogLevel(levelsArg.Index(i).String())

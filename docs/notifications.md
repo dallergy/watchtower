@@ -1,57 +1,27 @@
 # Notifications
 
-Watchtower sends notifications when containers are updated. The official image ships with
-[Apprise](https://github.com/caronc/apprise) installed (the same library [Uptime Kuma](https://github.com/louislam/uptime-kuma) uses),
-so a separate Apprise container is **not** required.
+Watchtower can tell you when it updates containers, fails to update them or runs into problems.
+Notification services are configured with [Apprise](https://github.com/caronc/apprise/wiki) style URLs and are
+sent directly by Watchtower: there is no Apprise installation, Python runtime or sidecar container involved.
 
-Notifications are triggered from [logrus](http://github.com/sirupsen/logrus) hooks.
+## Quick start
 
-## Gotify (built in)
+Point `WATCHTOWER_NOTIFICATION_URL` at one or more services, separated by spaces:
 
-Gotify is sent directly over HTTP. You do **not** need `WATCHTOWER_NOTIFICATION_APPRISE_URL`, a sidecar Apprise container, or the Apprise CLI.
-
-Either of these is enough:
-
-=== "Gotify URL"
-
-    ```yaml
-    environment:
-      WATCHTOWER_CLEANUP: "true"
-      WATCHTOWER_POLL_INTERVAL: "7200"
-      WATCHTOWER_NOTIFICATION_URL: gotifys://gotify.example.com/your.gotify.application.token
-    ```
-
-    `gotify://host/token` on a public hostname also uses HTTPS. Prefer `gotifys://` for TLS servers.
-
-Flags: `--notifications`, `--notification-gotify-url`, `--notification-gotify-token`, `--notification-gotify-tls-skip-verify` (env `WATCHTOWER_NOTIFICATION_GOTIFY_TLS_SKIP_VERIFY`).
-
-=== "Gotify env vars"
-
-    ```yaml
-    environment:
-      WATCHTOWER_NOTIFICATIONS: gotify
-      WATCHTOWER_NOTIFICATIONS_LEVEL: info
-      WATCHTOWER_NOTIFICATION_GOTIFY_URL: https://gotify.example.com/
-      WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN: your.gotify.application.token
-    ```
-
-=== "docker-compose"
+=== "compose.yml"
 
     ```yaml
     services:
       watchtower:
-        image: shounak6942/watchtower:latest
+        image: shounak6942/watchtower
         restart: unless-stopped
         volumes:
-          - /var/run/docker.sock:/var/run/docker.sock:ro
+          - /var/run/docker.sock:/var/run/docker.sock
         environment:
-          WATCHTOWER_CLEANUP: "true"
           WATCHTOWER_NOTIFICATION_REPORT: "true"
-          WATCHTOWER_NO_STARTUP_MESSAGE: "true"
-          WATCHTOWER_NOTIFICATIONS: gotify
-          WATCHTOWER_NOTIFICATIONS_LEVEL: info
-          WATCHTOWER_NOTIFICATION_GOTIFY_URL: https://gotify.example.com/
-          WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN: your.gotify.application.token
+          WATCHTOWER_NOTIFICATION_URL: >
+            gotifys://gotify.example.com/AbCdEfGhIjKlMnO
+            ntfys://ntfy.example.com/watchtower
     ```
 
 === "docker run"
@@ -61,15 +31,90 @@ Flags: `--notifications`, `--notification-gotify-url`, `--notification-gotify-to
       --name watchtower \
       --restart unless-stopped \
       -v /var/run/docker.sock:/var/run/docker.sock \
-      -e WATCHTOWER_CLEANUP=true \
-      -e WATCHTOWER_NOTIFICATIONS=gotify \
-      -e WATCHTOWER_NOTIFICATIONS_LEVEL=info \
-      -e WATCHTOWER_NOTIFICATION_GOTIFY_URL=https://gotify.example.com/ \
-      -e WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN=your.gotify.application.token \
+      -e WATCHTOWER_NOTIFICATION_REPORT=true \
+      -e WATCHTOWER_NOTIFICATION_URL="gotifys://gotify.example.com/AbCdEfGhIjKlMnO" \
       shounak6942/watchtower
     ```
 
-See [Compose and environment variables](compose.md) for the full env list.
+With `WATCHTOWER_NOTIFICATION_REPORT` enabled, Watchtower sends one summary per update session, and only when
+something was updated or failed. Use `--run-once` with a container name to try your setup without waiting for the
+next scheduled check.
+
+## Supported services
+
+| Service         | URL                                                                                                            | Options                                                                                              |
+|-----------------|----------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------|
+| Gotify          | `gotify://host[:port][/path]/token` (HTTP)<br>`gotifys://host[:port][/path]/token` (HTTPS)                    | `priority`: low, moderate, normal, high, emergency or 0 to 10<br>`format=markdown`                   |
+| ntfy            | `ntfy://topic` (on ntfy.sh)<br>`ntfy://[user:pass@]host[:port]/topic` (HTTP)<br>`ntfys://…` (HTTPS)            | `priority`: min, low, default, high, max or 1 to 5<br>`tags`, `click`, `token` (access token)        |
+| Slack           | `slack://[botname@]tokenA/tokenB/tokenC[/#channel]`<br>`slack://xoxb-token/#channel`<br>the webhook URL itself | `icon_url`, `icon_emoji`                                                                             |
+| Discord         | `discord://[botname@]webhook_id/webhook_token`<br>the webhook URL itself                                       | `avatar_url`, `tts=yes`, `thread` (thread ID)                                                        |
+| Telegram        | `tgram://bot_token/chat_id[/chat_id…]`                                                                         | `silent=yes`, `topic` (forum topic ID)                                                               |
+| Email           | `mailto://[user:pass@]host[:port]?to=address` (STARTTLS when offered)<br>`mailtos://…` (TLS required)          | `to`, `cc`, `bcc`, `from`, `name`, `smtp` (server), `mode`: starttls, ssl or insecure                |
+| Pushover        | `pover://user_key@app_token[/device…]`                                                                         | `priority`: lowest, low, normal, high, emergency or -2 to 2<br>`sound`                               |
+| Microsoft Teams | the Power Automate workflow URL<br>`workflows://host[:port]/workflow/signature`                                | Uses an adaptive card. `msteams://team/tokenA/tokenB/tokenC/tokenD` targets retired connector webhooks |
+| Webhook         | `json://[user:pass@]host[:port][/path]` (HTTP)<br>`jsons://…` (HTTPS)                                          | `method`: POST, PUT or PATCH<br>`+Header=value` adds a request header                                |
+
+Options are added as query parameters, e.g. `ntfys://ntfy.example.com/updates?priority=high&tags=whale`.
+Every web based service also accepts `verify=no` to skip TLS certificate verification, for servers with self-signed
+certificates.
+
+!!! tip "Escaping"
+    Tokens and passwords that contain characters such as `@`, `/`, `?`, `#` or `%` must be
+    [percent-encoded](https://developer.mozilla.org/docs/Glossary/Percent-encoding): a password `p@ss/word` becomes
+    `p%40ss%2Fword`.
+
+### Service notes
+
+-   **Gotify**: `gotify://` uses plain HTTP, which suits a Gotify container on the same Docker network
+    (`gotify://gotify/token`). Use `gotifys://` for anything reached over HTTPS. The token is sent in the
+    `X-Gotify-Key` header rather than the URL.
+-   **Email**: the SMTP server is the host of the URL, or the `smtp` option when the host is only used for the default
+    sender address (`mailtos://me:app_password@example.com?smtp=smtp.example.com`). Ports default to 25 for
+    `mailto://` and 587 for `mailtos://`; port 465 switches to implicit TLS. Credentials are never sent over an
+    unencrypted connection unless you set `mode=insecure`. The sender defaults to the user name (or `watchtower@host`)
+    and the recipient to the sender.
+-   **Slack**: incoming webhooks post to their own channel unless one is given. Bot tokens (`xoxb-…`) need at least one
+    channel, written as `#name`, `@user` or `+ID`.
+-   **Teams**: Office 365 connectors have been retired by Microsoft. Create a *Post to a channel when a webhook request
+    is received* workflow in Teams and use its URL as is.
+
+## Notification URLs
+
+-   `--notification-url` (env. `WATCHTOWER_NOTIFICATION_URL`): The service URLs to notify, separated by spaces. This
+    option can also reference a file (for example a Docker secret) that contains one URL per line.
+-   `--notification-apprise-config` (env. `WATCHTOWER_NOTIFICATION_APPRISE_CONFIG`): Path *inside the container* to an
+    [Apprise configuration file](https://github.com/caronc/apprise/wiki/config). Both the TEXT format (one URL per line)
+    and the YAML format (a `urls` list) are read. Per-URL options and tags in YAML files are ignored.
+
+=== "apprise.txt"
+
+    ```text
+    # one URL per line, optionally prefixed with tags
+    gotifys://gotify.example.com/AbCdEfGhIjKlMnO
+    admins = mailtos://watchtower:app_password@smtp.example.com?to=ops@example.com
+    ```
+
+=== "apprise.yml"
+
+    ```yaml
+    urls:
+      - gotifys://gotify.example.com/AbCdEfGhIjKlMnO
+      - tgram://123456789:AbCdEfGhIjKlMnOpQrStUvWxYz/-1001234567890
+    ```
+
+### Services that are not built in
+
+Apprise supports many more services than Watchtower includes. If you run an
+[Apprise API](https://github.com/caronc/apprise-api) server, Watchtower forwards the URLs it cannot handle itself to
+it, while the built-in services keep being sent directly:
+
+-   `--notification-apprise-url` (env. `WATCHTOWER_NOTIFICATION_APPRISE_URL`): The Apprise API base URL, for example
+    `http://apprise:8000`.
+-   `--notification-apprise-key` (env. `WATCHTOWER_NOTIFICATION_APPRISE_KEY`): Optional key of a configuration stored in
+    the Apprise API. Notifications are then sent to `/notify/{key}` as well.
+
+Without an Apprise API, a URL for a service that is not built in stops Watchtower at startup with an error that lists
+the supported services.
 
 ## Settings
 
@@ -80,79 +125,42 @@ See [Compose and environment variables](compose.md) for the full env list.
 -   `--notification-title-tag` (env. `WATCHTOWER_NOTIFICATION_TITLE_TAG`): Prefix to include in the title. Useful when running multiple watchtowers.
 -   `--notification-skip-title` (env. `WATCHTOWER_NOTIFICATION_SKIP_TITLE`): Do not pass the title param to notifications. This will not pass a dynamic title override to notification services. If no title is configured for the service, it will remove the title all together.
 -   `--notification-log-stdout` (env. `WATCHTOWER_NOTIFICATION_LOG_STDOUT`): Write rendered notification output to stdout.
-
-## Other services (built-in Apprise)
-
-!!! note "Using multiple notifications with environment variables"
-    There is currently a bug in Viper (https://github.com/spf13/viper/issues/380), which prevents comma-separated slices to
-    be used when using the environment variable.  
-    A workaround is available where we instead put quotes around the environment variable value and replace the commas with
-    spaces:
-    ```
-    WATCHTOWER_NOTIFICATIONS="slack msteams"
-    ```
-    If you're a `docker-compose` user, make sure to specify environment variables' values in your `.yml` file without double
-    quotes (`"`). This prevents unexpected errors when watchtower starts.
-
-Set one or more [Apprise service URLs](https://github.com/caronc/apprise/wiki). Watchtower calls the `apprise` CLI that is already in the image.
-
--   `--notification-url` (env. `WATCHTOWER_NOTIFICATION_URL`): Apprise-compatible service URL(s). This option can also reference a file, in which case the contents of the file are used.
--   `--notification-apprise-config` (env. `WATCHTOWER_NOTIFICATION_APPRISE_CONFIG`): Optional path *inside the container* to an [Apprise configuration file](https://github.com/caronc/apprise/wiki/config). Mount the file as a volume.
--   `--notification-template` (env. `WATCHTOWER_NOTIFICATION_TEMPLATE`): Go [template](https://golang.org/pkg/text/template/) used for the message.
+-   `--notification-template` (env. `WATCHTOWER_NOTIFICATION_TEMPLATE`): Go [template](https://pkg.go.dev/text/template) used for the message, see [templates](#templates).
 -   `--notification-report` (env. `WATCHTOWER_NOTIFICATION_REPORT`): Use the session report as the notification template data.
 
-You can define multiple services by space-separating the URLs.
+The URL `logger://` writes notifications to the Watchtower log, which is handy for testing templates.
 
-### Example (single container)
+## Migrating from Shoutrrr
 
-=== "docker run"
+`containrrr/watchtower` used [Shoutrrr](https://containrrr.dev/shoutrrr/) URLs, which look similar to Apprise URLs but
+are not the same. The legacy `WATCHTOWER_NOTIFICATIONS` options [below](#legacy_notifications) keep working unchanged,
+but `WATCHTOWER_NOTIFICATION_URL` values need to be rewritten:
 
-    ```bash
-    docker run -d \
-      --name watchtower \
-      --restart unless-stopped \
-      -v /var/run/docker.sock:/var/run/docker.sock \
-      -e WATCHTOWER_CLEANUP=true \
-      -e WATCHTOWER_NOTIFICATION_REPORT=true \
-      -e WATCHTOWER_NO_STARTUP_MESSAGE=true \
-      -e WATCHTOWER_NOTIFICATION_URL="discord://webhook_id/webhook_token tgram://bot_token/chat_id" \
-      shounak6942/watchtower
-    ```
+| Service  | Shoutrrr                                              | This fork (Apprise syntax)                             |
+|----------|-------------------------------------------------------|--------------------------------------------------------|
+| Gotify   | `gotify://host/token` (HTTPS)                         | `gotifys://host/token` (`gotify://` is plain HTTP)     |
+| ntfy     | `ntfy://host/topic` (HTTPS)                           | `ntfys://host/topic`                                   |
+| Discord  | `discord://token@webhook_id`                          | `discord://webhook_id/token`                           |
+| Slack    | `slack://hook:tokenA-tokenB-tokenC@webhook`           | `slack://tokenA/tokenB/tokenC`                         |
+| Telegram | `telegram://token@telegram?chats=chat_id`             | `tgram://token/chat_id`                                |
+| Pushover | `pushover://shoutrrr:app_token@user_key`              | `pover://user_key@app_token`                           |
+| Email    | `smtp://user:pass@host:587/?from=a@b.c&to=d@e.f`      | `mailtos://user:pass@host:587?from=a@b.c&to=d@e.f`     |
+| Webhook  | `generic://host/path`                                 | `jsons://host/path` (the JSON body differs)            |
 
-=== "docker-compose"
+## Templates
 
-    ```yaml
-    services:
-      watchtower:
-        image: shounak6942/watchtower:latest
-        restart: unless-stopped
-        volumes:
-          - /var/run/docker.sock:/var/run/docker.sock:ro
-        environment:
-          WATCHTOWER_CLEANUP: "true"
-          WATCHTOWER_NOTIFICATION_REPORT: "true"
-          WATCHTOWER_NO_STARTUP_MESSAGE: "true"
-          WATCHTOWER_NOTIFICATION_URL: discord://webhook_id/webhook_token
-    ```
+Notifications are rendered with Go [templates](https://pkg.go.dev/text/template). Try yours in the
+[template preview](template-preview.md) before deploying it.
 
-See [Compose and environment variables](compose.md) for a full env reference.
-
-### Optional external Apprise API
-
-The image does not need `caronc/apprise`. If you already run an [Apprise API](https://github.com/caronc/apprise-api) server, you can still point Watchtower at it:
-
--   `--notification-apprise-url` (env. `WATCHTOWER_NOTIFICATION_APPRISE_URL`): Apprise API base URL (for example `http://apprise:8000`). When set, Watchtower uses HTTP instead of the bundled CLI.
--   `--notification-apprise-key` (env. `WATCHTOWER_NOTIFICATION_APPRISE_KEY`): Optional API key / persistent config name. Notifications are sent to `/notify/{key}`.
-
-## Simple templates
+### Simple templates
 
 The default value if not set is `{{range .}}{{.Message}}{{println}}{{end}}`. The example below uses a template that also
 outputs timestamp and log level.
 
 !!! tip "Custom date format"
     If you want to adjust the date/time format it must show how the
-    [reference time](https://golang.org/pkg/time/#pkg-constants) (_Mon Jan 2 15:04:05 MST 2006_) would be displayed in your
-    custom format.  
+    [reference time](https://pkg.go.dev/time#pkg-constants) (_Mon Jan 2 15:04:05 MST 2006_) would be displayed in your
+    custom format.
     i.e., The day of the year has to be 1, the month has to be 2 (february), the hour 3 (or 15 for 24h time) etc.
 
 !!! note "Skipping notifications"
@@ -164,12 +172,12 @@ Example:
 docker run -d \
   --name watchtower \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  -e WATCHTOWER_NOTIFICATION_URL="discord://token/webhook_id" \
+  -e WATCHTOWER_NOTIFICATION_URL="discord://webhook_id/webhook_token" \
   -e WATCHTOWER_NOTIFICATION_TEMPLATE="{{range .}}{{.Time.Format \"2006-01-02 15:04:05\"}} ({{.Level}}): {{.Message}}{{println}}{{end}}" \
   shounak6942/watchtower
 ```
 
-## Report templates
+### Report templates
 
 The default template for report notifications are the following:
 ```go
@@ -213,7 +221,7 @@ Example using a custom report template that always sends a session report after 
       --name watchtower \
       -v /var/run/docker.sock:/var/run/docker.sock \
       -e WATCHTOWER_NOTIFICATION_REPORT="true" \
-      -e WATCHTOWER_NOTIFICATION_URL="discord://token/webhook_id slack://token_a/token_b/token_c" \
+      -e WATCHTOWER_NOTIFICATION_URL="discord://webhook_id/webhook_token slack://token_a/token_b/token_c" \
       -e WATCHTOWER_NOTIFICATION_TEMPLATE="
       {{- if .Report -}}
         {{- with .Report -}}
@@ -238,7 +246,7 @@ Example using a custom report template that always sends a session report after 
       shounak6942/watchtower
     ```
 
-=== "docker-compose"
+=== "compose.yml"
 
     ```yaml
     services:
@@ -249,7 +257,7 @@ Example using a custom report template that always sends a session report after 
         environment:
           WATCHTOWER_NOTIFICATION_REPORT: "true"
           WATCHTOWER_NOTIFICATION_URL: >
-            discord://token/webhook_id
+            discord://webhook_id/webhook_token
             slack://token_a/token_b/token_c
           WATCHTOWER_NOTIFICATION_TEMPLATE: |
             {{- if .Report -}}
@@ -275,17 +283,24 @@ Example using a custom report template that always sends a session report after 
 
 ## Legacy notifications
 
-For backwards compatibility, the notifications can also be configured using legacy notification options. These will automatically be converted to Apprise-compatible URLs when used.  
-The types of notifications to send are set by passing a comma-separated list of values to the `--notifications` option
+For backwards compatibility, the notifications can also be configured using the legacy options of the original
+Watchtower. They are converted to the URLs described above when Watchtower starts.
+The types of notifications to send are set by passing a list of values to the `--notifications` option
 (or corresponding environment variable `WATCHTOWER_NOTIFICATIONS`), which has the following valid values:
 
 -   `email` to send notifications via e-mail
--   `slack` to send notifications through a Slack webhook
--   `msteams` to send notifications via MSTeams webhook
+-   `slack` to send notifications through a Slack (or Discord) webhook
+-   `msteams` to send notifications via a Microsoft Teams webhook or workflow
 -   `gotify` to send notifications via Gotify
 
+!!! note "Using multiple notification types with environment variables"
+    Separate the values with spaces rather than commas, and do not quote the value in compose files:
+    ```
+    WATCHTOWER_NOTIFICATIONS=slack msteams
+    ```
+
 ### `notify-upgrade`
-If watchtower is started with `notify-upgrade` as it's first argument, it will generate a .env file with your current legacy notification options converted to Apprise URLs.
+If watchtower is started with `notify-upgrade` as it's first argument, it will generate a .env file with your current legacy notification options converted to notification URLs.
 
 === "docker run"
 
@@ -299,7 +314,7 @@ If watchtower is started with `notify-upgrade` as it's first argument, it will g
     notify-upgrade
     ```
 
-=== "docker-compose.yml"
+=== "compose.yml"
 
     ```yaml
     services:
@@ -325,7 +340,7 @@ You can then copy this file from the container (a message with the full command 
     shounak6942/watchtower
     ```
 
-=== "docker-compose.yml"
+=== "compose.yml"
 
     ```yaml
     services:
@@ -345,7 +360,7 @@ To receive notifications by email, the following command-line options, or their 
 -   `--notification-email-to` (env. `WATCHTOWER_NOTIFICATION_EMAIL_TO`): The e-mail address to which notifications will be sent.
 -   `--notification-email-server` (env. `WATCHTOWER_NOTIFICATION_EMAIL_SERVER`): The SMTP server to send e-mails through.
 -   `--notification-email-server-tls-skip-verify` (env. `WATCHTOWER_NOTIFICATION_EMAIL_SERVER_TLS_SKIP_VERIFY`): Do not verify the TLS certificate of the mail server. This should be used only for testing.
--   `--notification-email-server-port` (env. `WATCHTOWER_NOTIFICATION_EMAIL_SERVER_PORT`): The port used to connect to the SMTP server to send e-mails through. Defaults to `25`.
+-   `--notification-email-server-port` (env. `WATCHTOWER_NOTIFICATION_EMAIL_SERVER_PORT`): The port used to connect to the SMTP server to send e-mails through. Defaults to `25`, which uses STARTTLS when the server offers it. Other ports require TLS.
 -   `--notification-email-server-user` (env. `WATCHTOWER_NOTIFICATION_EMAIL_SERVER_USER`): The username to authenticate with the SMTP server with.
 -   `--notification-email-server-password` (env. `WATCHTOWER_NOTIFICATION_EMAIL_SERVER_PASSWORD`): The password to authenticate with the SMTP server with. Can also reference a file, in which case the contents of the file are used.
 -   `--notification-email-delay` (env. `WATCHTOWER_NOTIFICATION_EMAIL_DELAY`): Delay before sending notifications expressed in seconds.
@@ -368,19 +383,21 @@ docker run -d \
   shounak6942/watchtower
 ```
 
-You can also use a native Apprise mail URL instead of the legacy flags, for example `mailto://user:app_password@gmail.com`.
+The equivalent notification URL is
+`mailtos://fromaddress%40gmail.com:app_password@smtp.gmail.com:587?to=toaddress@gmail.com`.
 
 ### Slack
 
 To receive notifications in Slack, add `slack` to the `--notifications` option or the `WATCHTOWER_NOTIFICATIONS` environment variable.
 
-Additionally, you should set the Slack webhook URL using the `--notification-slack-hook-url` option or the `WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL` environment variable. This option can also reference a file, in which case the contents of the file are used.
+Additionally, you should set the Slack webhook URL using the `--notification-slack-hook-url` option or the `WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL` environment variable. This option can also reference a file, in which case the contents of the file are used. Discord webhook URLs are accepted too.
 
 By default, watchtower will send messages under the name `watchtower`, you can customize this string through the `--notification-slack-identifier` option or the `WATCHTOWER_NOTIFICATION_SLACK_IDENTIFIER` environment variable.
 
 Other, optional, variables include:
 
 -   `--notification-slack-channel` (env. `WATCHTOWER_NOTIFICATION_SLACK_CHANNEL`): A string which overrides the webhook's default channel. Example: #my-custom-channel.
+-   `--notification-slack-icon-emoji` (env. `WATCHTOWER_NOTIFICATION_SLACK_ICON_EMOJI`) and `--notification-slack-icon-url` (env. `WATCHTOWER_NOTIFICATION_SLACK_ICON_URL`): The icon of the messages.
 
 Example:
 
@@ -389,7 +406,7 @@ docker run -d \
   --name watchtower \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -e WATCHTOWER_NOTIFICATIONS=slack \
-  -e WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL="https://hooks.slack.com/services/xxx/yyyyyyyyyyyyyyy" \
+  -e WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL="https://hooks.slack.com/services/xxx/yyyyyyyyy/zzzzzzzzzzzzzzzzzzzzzzzz" \
   -e WATCHTOWER_NOTIFICATION_SLACK_IDENTIFIER=watchtower-server-1 \
   -e WATCHTOWER_NOTIFICATION_SLACK_CHANNEL=#my-custom-channel \
   shounak6942/watchtower
@@ -397,11 +414,11 @@ docker run -d \
 
 ### Microsoft Teams
 
-To receive notifications in MSTeams channel, add `msteams` to the `--notifications` option or the `WATCHTOWER_NOTIFICATIONS` environment variable.
+To receive notifications in a Microsoft Teams channel, add `msteams` to the `--notifications` option or the `WATCHTOWER_NOTIFICATIONS` environment variable.
 
-Additionally, you should set the MSTeams webhook URL using the `--notification-msteams-hook` option or the `WATCHTOWER_NOTIFICATION_MSTEAMS_HOOK_URL` environment variable. This option can also reference a file, in which case the contents of the file are used.
+Additionally, set the webhook URL using the `--notification-msteams-hook` option or the `WATCHTOWER_NOTIFICATION_MSTEAMS_HOOK_URL` environment variable. This option can also reference a file, in which case the contents of the file are used. Both Power Automate workflow URLs and the retired Office 365 connector URLs are accepted.
 
--   `--notification-msteams-data` (env. `WATCHTOWER_NOTIFICATION_MSTEAMS_USE_LOG_DATA`): Legacy option for including log entry fields as MSTeams message facts. This option is retained for compatibility but has limited effect when using Apprise.
+-   `--notification-msteams-data` (env. `WATCHTOWER_NOTIFICATION_MSTEAMS_USE_LOG_DATA`): Legacy option for including log entry fields as message facts. It is accepted for compatibility, but has no effect.
 
 Example:
 
@@ -410,10 +427,26 @@ docker run -d \
   --name watchtower \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -e WATCHTOWER_NOTIFICATIONS=msteams \
-  -e WATCHTOWER_NOTIFICATION_MSTEAMS_HOOK_URL="https://outlook.office.com/webhook/xxxxxxxx@xxxxxxx/IncomingWebhook/yyyyyyyy/zzzzzzzzzz" \
+  -e WATCHTOWER_NOTIFICATION_MSTEAMS_HOOK_URL="https://prod-00.westus.logic.azure.com:443/workflows/xxxxxxxx/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=yyyyyyyy" \
   shounak6942/watchtower
 ```
 
 ### Gotify
 
-Gotify is documented at the top of this page. Use `WATCHTOWER_NOTIFICATIONS=gotify` plus `WATCHTOWER_NOTIFICATION_GOTIFY_URL` and `WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN`. Do not set `WATCHTOWER_NOTIFICATION_APPRISE_URL`.
+To push a notification to your Gotify instance, add `gotify` to the `--notifications` option and set:
+
+-   `--notification-gotify-url` (env. `WATCHTOWER_NOTIFICATION_GOTIFY_URL`): The base URL of the Gotify server, starting with `http://` or `https://`.
+-   `--notification-gotify-token` (env. `WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN`): The application token. Can also reference a file, in which case the contents of the file are used.
+-   `--notification-gotify-tls-skip-verify` (env. `WATCHTOWER_NOTIFICATION_GOTIFY_TLS_SKIP_VERIFY`): Do not verify the TLS certificate of the server. This should be used only for testing.
+
+Example:
+
+```bash
+docker run -d \
+  --name watchtower \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -e WATCHTOWER_NOTIFICATIONS=gotify \
+  -e WATCHTOWER_NOTIFICATION_GOTIFY_URL="https://gotify.example.com/" \
+  -e WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN="AbCdEfGhIjKlMnO" \
+  shounak6942/watchtower
+```

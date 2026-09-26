@@ -1,8 +1,18 @@
 version: 2
 
+project_name: watchtower
+
 builds:
-  - main: ./main.go
+  - id: watchtower
+    main: .
     binary: watchtower
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    tags:
+      # embed the time zone database, as the container image has none
+      - timetzdata
     goos:
       - linux
       - windows
@@ -11,87 +21,57 @@ builds:
       - "386"
       - arm
       - arm64
+    goarm:
+      - "6"
+      - "7"
+    ignore:
+      - goos: windows
+        goarch: arm
     ldflags:
-      - -s -w -X github.com/containrrr/watchtower/internal/meta.Version={{.Version}}
+      - -s -w -X github.com/dallergy/watchtower/internal/meta.Version={{ .Version }}
 
 archives:
-  - name_template: "{{.ProjectName}}_{{.Os}}_{{.Arch}}"
-    format: tar.gz
+  - name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}"
+    formats: [tar.gz]
     format_overrides:
       - goos: windows
-        format: zip
+        formats: [zip]
     files:
       - LICENSE.md
 
-dockers:
-  - use: buildx
-    goos: linux
-    goarch: amd64
-    dockerfile: dockerfiles/Dockerfile
-    image_templates:
-      - "shounak6942/watchtower:amd64-{{ .Version }}"
-      - "shounak6942/watchtower:amd64-latest"
-      - "ghcr.io/dallergy/watchtower:amd64-{{ .Version }}"
-      - "ghcr.io/dallergy/watchtower:amd64-latest"
-    binaries:
-      - watchtower
-  - use: buildx
-    goos: linux
-    goarch: "386"
-    dockerfile: dockerfiles/Dockerfile
-    image_templates:
-      - "shounak6942/watchtower:i386-{{ .Version }}"
-      - "shounak6942/watchtower:i386-latest"
-      - "ghcr.io/dallergy/watchtower:i386-{{ .Version }}"
-      - "ghcr.io/dallergy/watchtower:i386-latest"
-    binaries:
-      - watchtower
-  - use: buildx
-    goos: linux
-    goarch: arm
-    goarm: "6"
-    dockerfile: dockerfiles/Dockerfile
-    image_templates:
-      - "shounak6942/watchtower:armhf-{{ .Version }}"
-      - "shounak6942/watchtower:armhf-latest"
-      - "ghcr.io/dallergy/watchtower:armhf-{{ .Version }}"
-      - "ghcr.io/dallergy/watchtower:armhf-latest"
-    binaries:
-      - watchtower
-  - use: buildx
-    goos: linux
-    goarch: arm64
-    dockerfile: dockerfiles/Dockerfile
-    image_templates:
-      - "shounak6942/watchtower:arm64v8-{{ .Version }}"
-      - "shounak6942/watchtower:arm64v8-latest"
-      - "ghcr.io/dallergy/watchtower:arm64v8-{{ .Version }}"
-      - "ghcr.io/dallergy/watchtower:arm64v8-latest"
-    binaries:
-      - watchtower
+checksum:
+  name_template: checksums.txt
 
-docker_manifests:
-  - name_template: "shounak6942/watchtower:{{ .Version }}"
-    image_templates:
-      - "shounak6942/watchtower:amd64-{{ .Version }}"
-      - "shounak6942/watchtower:i386-{{ .Version }}"
-      - "shounak6942/watchtower:armhf-{{ .Version }}"
-      - "shounak6942/watchtower:arm64v8-{{ .Version }}"
-  - name_template: "shounak6942/watchtower:latest"
-    image_templates:
-      - "shounak6942/watchtower:amd64-latest"
-      - "shounak6942/watchtower:i386-latest"
-      - "shounak6942/watchtower:armhf-latest"
-      - "shounak6942/watchtower:arm64v8-latest"
-  - name_template: "ghcr.io/dallergy/watchtower:{{ .Version }}"
-    image_templates:
-      - "ghcr.io/dallergy/watchtower:amd64-{{ .Version }}"
-      - "ghcr.io/dallergy/watchtower:i386-{{ .Version }}"
-      - "ghcr.io/dallergy/watchtower:armhf-{{ .Version }}"
-      - "ghcr.io/dallergy/watchtower:arm64v8-{{ .Version }}"
-  - name_template: "ghcr.io/dallergy/watchtower:latest"
-    image_templates:
-      - "ghcr.io/dallergy/watchtower:amd64-latest"
-      - "ghcr.io/dallergy/watchtower:i386-latest"
-      - "ghcr.io/dallergy/watchtower:armhf-latest"
-      - "ghcr.io/dallergy/watchtower:arm64v8-latest"
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  use: github-native
+
+dockers_v2:
+  - ids:
+      - watchtower
+    dockerfile: dockerfiles/Dockerfile
+    images:
+      - shounak6942/watchtower
+      - ghcr.io/dallergy/watchtower
+    tags:
+      - "{{ .Version }}"
+      - "{{ if not .Prerelease }}latest{{ end }}"
+    platforms:
+      - linux/amd64
+      - linux/386
+      - linux/arm/v6
+      - linux/arm/v7
+      - linux/arm64
+    labels:
+      org.opencontainers.image.title: Watchtower
+      org.opencontainers.image.description: Automatically update running Docker containers
+      org.opencontainers.image.source: https://github.com/dallergy/watchtower
+      org.opencontainers.image.url: https://github.com/dallergy/watchtower
+      org.opencontainers.image.documentation: https://dallergy.github.io/watchtower/
+      org.opencontainers.image.licenses: Apache-2.0
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+      org.opencontainers.image.created: "{{ .Date }}"
+    sbom: true

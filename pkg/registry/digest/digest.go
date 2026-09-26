@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/containrrr/watchtower/internal/meta"
-	"github.com/containrrr/watchtower/pkg/registry/auth"
-	"github.com/containrrr/watchtower/pkg/registry/manifest"
-	"github.com/containrrr/watchtower/pkg/types"
+	"github.com/dallergy/watchtower/internal/meta"
+	"github.com/dallergy/watchtower/pkg/registry/auth"
+	"github.com/dallergy/watchtower/pkg/registry/manifest"
+	"github.com/dallergy/watchtower/pkg/types"
 	"github.com/sirupsen/logrus"
 )
 
@@ -113,7 +113,7 @@ func GetDigest(url string, token string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	if res.StatusCode != 200 {
 		wwwAuthHeader := res.Header.Get("www-authenticate")
