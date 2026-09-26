@@ -1,60 +1,49 @@
-<p style="text-align: center; margin-left: 1.6rem;">
-  <img alt="Logotype depicting a lighthouse" src="./images/logo-450px.png" width="450" />
-</p>
-<h1 align="center">
-  Watchtower
-</h1>
+---
+hide:
+  - navigation
+  - toc
+---
 
-<p align="center">
-  A container-based solution for automating Docker container base image updates.
-  <br/><br/>
-  <a href="https://github.com/dallergy/watchtower/actions/workflows/pull-request.yml">
-    <img alt="CI" src="https://github.com/dallergy/watchtower/actions/workflows/pull-request.yml/badge.svg" />
-  </a>
-  <a href="https://codecov.io/gh/dallergy/watchtower">
-    <img alt="Codecov" src="https://codecov.io/gh/dallergy/watchtower/branch/main/graph/badge.svg">
-  </a>
-  <a href="https://godoc.org/github.com/dallergy/watchtower">
-    <img alt="GoDoc" src="https://godoc.org/github.com/dallergy/watchtower?status.svg" />
-  </a>
-  <a href="https://goreportcard.com/report/github.com/dallergy/watchtower">
-    <img alt="Go Report Card" src="https://goreportcard.com/badge/github.com/dallergy/watchtower" />
-  </a>
-  <a href="https://github.com/dallergy/watchtower/releases">
-    <img alt="latest version" src="https://img.shields.io/github/tag/dallergy/watchtower.svg" />
-  </a>
-  <a href="https://www.apache.org/licenses/LICENSE-2.0">
-    <img alt="Apache-2.0 License" src="https://img.shields.io/github/license/dallergy/watchtower.svg" />
-  </a>
-  <a href="https://github.com/dallergy/watchtower/#contributors">
-    <img alt="All Contributors" src="https://img.shields.io/github/all-contributors/containrrr/watchtower" />
-  </a>
-  <a href="https://hub.docker.com/r/shounak6942/watchtower">
-    <img alt="Pulls from DockerHub" src="https://img.shields.io/docker/pulls/shounak6942/watchtower.svg" />
-  </a>
+<div class="wt-hero" markdown>
+
+<img class="wt-hero__logo" src="images/logo-450px.png" alt="Watchtower logo" width="80" height="80">
+
+# Keep your containers up to date, automatically
+
+<p class="wt-hero__lead">
+Watchtower watches your running containers. When a newer image is pushed, it pulls it and
+restarts the container with the exact options it was started with.
 </p>
 
-!!! note "Community-maintained fork"
-    The original [containrrr/watchtower](https://github.com/dallergy/watchtower) project is no longer maintained.
-    This fork is actively maintained at [dallergy/watchtower](https://github.com/dallergy/watchtower) and published to Docker Hub as `shounak6942/watchtower`.
+<div class="wt-hero__actions">
+  <a class="md-button md-button--primary" href="#quick-start">Get started</a>
+  <a class="md-button" href="notifications/">Set up notifications</a>
+  <a class="md-button" href="https://github.com/dallergy/watchtower">GitHub</a>
+</div>
 
-## Quick Start
+<ul class="wt-pills">
+  <li>Scratch image, no OS packages</li>
+  <li>amd64 · arm64 · armv7 · armv6 · 386</li>
+  <li>Docker Hub &amp; GHCR</li>
+</ul>
 
-With watchtower you can update the running version of your containerized app simply by pushing a new image to the Docker
-Hub or your own image registry. Watchtower will pull down your new image, gracefully shut down your existing container
-and restart it with the same options that were used when it was deployed initially. Run the watchtower container with
-the following command:
+</div>
+
+## Quick start
+
+Run Watchtower next to your other containers and give it access to the Docker socket:
 
 === "docker run"
 
     ```bash
-    $ docker run -d \
-    --name watchtower \
-    -v /var/run/docker.sock:/var/run/docker.sock \
-    shounak6942/watchtower
+    docker run -d \
+      --name watchtower \
+      --restart unless-stopped \
+      -v /var/run/docker.sock:/var/run/docker.sock \
+      shounak6942/watchtower
     ```
 
-=== "docker-compose.yml"
+=== "compose.yml"
 
     ```yaml
     services:
@@ -62,9 +51,57 @@ the following command:
         image: shounak6942/watchtower
         restart: unless-stopped
         volumes:
-          - /var/run/docker.sock:/var/run/docker.sock:ro
+          - /var/run/docker.sock:/var/run/docker.sock
         environment:
           WATCHTOWER_CLEANUP: "true"
     ```
 
-Notifications use Apprise bundled in the image. See [Compose and environment variables](compose.md) and [Notifications](notifications.md).
+The same image is published as `ghcr.io/dallergy/watchtower`. See [Compose and environment](compose.md) for a
+complete, commented setup.
+
+## What you get
+
+<div class="grid cards" markdown>
+
+-   :material-shield-check-outline:{ .lg .middle } __Small and secure__
+
+    ---
+
+    A static binary on an empty base image: a few megabytes, and no shell or OS packages that
+    could carry vulnerabilities.
+
+-   :material-bell-ring-outline:{ .lg .middle } __Built-in notifications__
+
+    ---
+
+    Gotify, ntfy, Slack, Discord, Telegram, email, Teams, Pushover and webhooks, configured with
+    Apprise-style URLs. No sidecar container needed.
+
+    [:octicons-arrow-right-24: Notifications](notifications.md)
+
+-   :material-filter-variant:{ .lg .middle } __You decide what updates__
+
+    ---
+
+    Opt containers in or out with labels, monitor without updating, or scope instances to
+    groups of containers.
+
+    [:octicons-arrow-right-24: Container selection](container-selection.md)
+
+-   :material-api:{ .lg .middle } __Automation friendly__
+
+    ---
+
+    Trigger updates from CI through the HTTP API, run lifecycle hooks around updates and export
+    Prometheus metrics.
+
+    [:octicons-arrow-right-24: HTTP API mode](http-api-mode.md)
+
+</div>
+
+!!! note "A maintained fork"
+    The original [containrrr/watchtower](https://github.com/containrrr/watchtower) project is no longer
+    maintained. This fork keeps Watchtower current with the latest Docker Engine releases, dependencies and
+    security fixes. Switching is usually just a matter of replacing `containrrr/watchtower` with
+    `shounak6942/watchtower`, but notification URLs now use Apprise instead of Shoutrrr syntax, see
+    [migrating notifications](notifications.md#migrating_from_shoutrrr).

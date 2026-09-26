@@ -1,159 +1,104 @@
+---
+hide:
+  - toc
+---
+
+# Template preview
+
+Write a [notification template](notifications.md#templates) and see what it renders for generated containers and
+log entries. The preview runs Watchtower's own template engine in your browser, so nothing is sent anywhere.
+
 <style>
-    #tplprev {
-        margin: 0;
-        display: flex; 
-        flex-direction: column; 
-        row-gap: 1rem; 
-        box-sizing: border-box; 
-        position: relative; 
-        margin-right: -13.3rem
-    }
-    #tplprev textarea {
-        box-decoration-break: slice;
-        overflow: auto;
-        padding: 0.77em 1.18em;
-        scrollbar-color: var(--md-default-fg-color--lighter) transparent;
-        scrollbar-width: thin;
-        touch-action: auto;
-        word-break: normal;
-        height: 420px;
-        flex: 1;
-    }
-    #tplprev .controls {
-        display: flex; 
-        flex-direction: row; 
-        column-gap: 0.5rem
-    }
-    #tplprev textarea, #tplprev input {
-        background-color: var(--md-code-bg-color);
-        border-width: 0;
-        border-radius: 0.1rem;
-        color: var(--md-code-fg-color);
-        font-feature-settings: "kern";
-        font-family: var(--md-code-font-family);
-    }
-    .numfield {
-        font-size: .7rem;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-    }
-    #tplprev button {
-        border-radius: 0.1rem;
-        color: var(--md-primary-bg-color);
-        background-color: var(--md-primary-fg-color);
-        flex:1; 
-        min-width: 12ch; 
-        padding: 0.5rem
-    }
-    #tplprev button:hover {
-        background-color: var(--md-accent-fg-color);
-    }
-    #tplprev input[type="number"] { width: 5ch; flex: 1; font-size: 1rem; }
-    #tplprev fieldset {
-        margin-top: -0.5rem;
-        display: flex;
-        flex: 1;
-        column-gap: 0.5rem;
-    }
-    #tplprev .template-wrapper {
-        display: flex; 
-        flex:1; 
-        column-gap: 1rem;
-    }
-    #tplprev .result-wrapper {
-        flex: 1; 
-        display: flex
-    }
-    #result {
-        font-size: 0.7rem;
-        background-color: var(--md-code-bg-color);
-        scrollbar-color: var(--md-default-fg-color--lighter) transparent;
-        scrollbar-width: thin;
-        touch-action: auto;
-        overflow: auto;
-        padding: 0.77em 1.18em;
-        margin:0;
-        height: 540px;
-        flex:1; 
-        width:100%
-    }
-    #result b {color: var(--md-code-hl-special-color)}
-    #result i {color: var(--md-code-hl-keyword-color)}
-    #tplprev .loading {
-        position: absolute; 
-        inset: 0; 
-        display: flex; 
-        padding: 1rem; 
-        box-sizing: border-box; 
-        background: var(--md-code-bg-color); 
-        margin-top: 0
-    }
+  .tplprev { display: grid; gap: 1rem; margin-top: 1.2rem; }
+  .tplprev__panes { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
+  @media screen and (min-width: 70em) {
+    .tplprev__panes { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  }
+  .tplprev__pane { display: flex; flex-direction: column; min-width: 0; }
+  .tplprev__pane-header {
+    align-items: center; color: var(--wt-muted); display: flex; font-size: 0.64rem; font-weight: 650;
+    justify-content: space-between; letter-spacing: 0.06em; margin-bottom: 0.4rem; min-height: 1.5rem;
+    text-transform: uppercase;
+  }
+  .tplprev textarea, .md-typeset .tplprev__output {
+    background: var(--wt-surface); border: 1px solid var(--wt-border); border-radius: var(--wt-radius);
+    box-sizing: border-box; color: var(--md-code-fg-color); font-family: var(--md-code-font-family);
+    flex: 1; font-size: 0.68rem; line-height: 1.6; margin: 0; min-height: 26rem; padding: 0.9rem 1rem; width: 100%;
+  }
+  .tplprev textarea { overflow: auto; resize: vertical; tab-size: 2; white-space: pre; }
+  .tplprev textarea:focus-visible { border-color: var(--wt-accent); outline: 2px solid var(--wt-accent-soft); }
+  .tplprev__output { overflow: auto; white-space: pre-wrap; word-break: break-word; }
+  .tplprev__output[data-state="empty"], .tplprev__output[data-state="loading"] { color: var(--wt-muted); font-style: italic; }
+  .tplprev__output[data-state="error"] { color: #d14343; }
+  .tplprev__controls {
+    background: var(--wt-surface); border: 1px solid var(--wt-border); border-radius: var(--wt-radius);
+    display: grid; gap: 1rem 2rem; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); padding: 0.9rem 1rem;
+  }
+  .tplprev fieldset { border: 0; margin: 0; min-width: 0; padding: 0; }
+  .tplprev legend { align-items: center; display: flex; font-size: 0.7rem; font-weight: 650; gap: 0.4rem; margin-bottom: 0.5rem; padding: 0; }
+  .tplprev legend input { accent-color: var(--wt-accent); margin: 0; }
+  .tplprev__fields { display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fill, minmax(4.6rem, 1fr)); }
+  .tplprev fieldset:disabled .tplprev__fields { opacity: 0.45; }
+  .tplprev__field { color: var(--wt-muted); display: flex; flex-direction: column; font-size: 0.6rem; gap: 0.2rem; }
+  .tplprev__field input {
+    background: var(--wt-bg); border: 1px solid var(--wt-border); border-radius: var(--wt-radius-sm);
+    color: var(--wt-text); font: inherit; font-size: 0.72rem; padding: 0.3rem 0.45rem; width: 100%; box-sizing: border-box;
+  }
+  .tplprev__field input:focus-visible { border-color: var(--wt-accent); outline: 2px solid var(--wt-accent-soft); }
+  .tplprev__actions { display: flex; gap: 0.4rem; }
+  .tplprev__actions button {
+    background: transparent; border: 1px solid var(--wt-border); border-radius: var(--wt-radius-sm); color: var(--wt-muted);
+    cursor: pointer; font: inherit; font-size: 0.6rem; letter-spacing: 0; padding: 0.15rem 0.55rem; text-transform: none;
+  }
+  .tplprev__actions button:hover { border-color: var(--wt-muted); color: var(--wt-text); }
 </style>
+
+<form class="tplprev" id="tplprev" autocomplete="off">
+  <div class="tplprev__panes">
+    <div class="tplprev__pane">
+      <div class="tplprev__pane-header">
+        <label for="tplprev-template">Template</label>
+        <span class="tplprev__actions">
+          <button type="button" id="tplprev-share" title="Copy a link to this template">Copy link</button>
+          <button type="button" id="tplprev-reset" title="Restore the default template">Reset</button>
+        </span>
+      </div>
+      <textarea id="tplprev-template" name="template" spellcheck="false"></textarea>
+    </div>
+    <div class="tplprev__pane">
+      <div class="tplprev__pane-header"><span id="tplprev-result-label">Rendered notification</span></div>
+      <pre class="tplprev__output" id="tplprev-result" aria-labelledby="tplprev-result-label" aria-live="polite" data-state="loading">Loading the template engine…</pre>
+    </div>
+  </div>
+
+  <div class="tplprev__controls">
+    <fieldset id="tplprev-report">
+      <legend><input type="checkbox" name="report" id="tplprev-report-toggle" checked><label for="tplprev-report-toggle">Container report</label></legend>
+      <div class="tplprev__fields">
+        <label class="tplprev__field">Scanned<input type="number" min="0" max="50" name="scanned" value="3"></label>
+        <label class="tplprev__field">Updated<input type="number" min="0" max="50" name="updated" value="3"></label>
+        <label class="tplprev__field">Failed<input type="number" min="0" max="50" name="failed" value="1"></label>
+        <label class="tplprev__field">Skipped<input type="number" min="0" max="50" name="skipped" value="1"></label>
+        <label class="tplprev__field">Fresh<input type="number" min="0" max="50" name="fresh" value="3"></label>
+        <label class="tplprev__field">Stale<input type="number" min="0" max="50" name="stale" value="0"></label>
+      </div>
+    </fieldset>
+    <fieldset id="tplprev-log">
+      <legend><input type="checkbox" name="log" id="tplprev-log-toggle" checked><label for="tplprev-log-toggle">Log entries</label></legend>
+      <div class="tplprev__fields">
+        <label class="tplprev__field">Error<input type="number" min="0" max="50" name="error" value="1"></label>
+        <label class="tplprev__field">Warning<input type="number" min="0" max="50" name="warning" value="1"></label>
+        <label class="tplprev__field">Info<input type="number" min="0" max="50" name="info" value="2"></label>
+        <label class="tplprev__field">Debug<input type="number" min="0" max="50" name="debug" value="0"></label>
+      </div>
+    </fieldset>
+  </div>
+</form>
+
 <script src="../assets/wasm_exec.js"></script>
 <script>
-    let wasmLoaded = false;
-    const updatePreview = () => {
-        if (!wasmLoaded) return;
-        const form = document.querySelector('#tplprev');
-        const input = form.template.value;
-        console.log('Input: %o', input);
-        const arrFromCount = (key) => Array.from(Array(form[key]?.valueAsNumber ?? 0), () => key);
-        const states = form.report.value === "yes" ? [
-            ...arrFromCount("skipped"),
-            ...arrFromCount("scanned"),
-            ...arrFromCount("updated"),
-            ...arrFromCount("failed" ),
-            ...arrFromCount("fresh"  ),
-            ...arrFromCount("stale"  ),
-        ] : [];
-        console.log("States: %o", states);
-        const levels = form.log.value === "yes" ? [
-            ...arrFromCount("error"),
-            ...arrFromCount("warning"),
-            ...arrFromCount("info"),
-            ...arrFromCount("debug"),
-        ] : [];
-        console.log("Levels: %o", levels);
-        const output = WATCHTOWER.tplprev(input, states, levels);
-        console.log('Output: \n%o', output);
-        if (output.startsWith('Error: ')) {
-            document.querySelector('#result').innerHTML = `<b>Error</b>: ${output.substring(7)}`;
-        } else if (output.length) {
-            document.querySelector('#result').innerText = output;
-        } else {
-            document.querySelector('#result').innerHTML = '<i>empty (would not be sent as a notification)</i>';
-        }
-    }
-    const formSubmitted = (e) => {
-        //e.preventDefault();
-        //updatePreview();
-    }
-    let debounce;
-    const inputUpdated = () => {
-        if(debounce) clearTimeout(debounce);
-        debounce = setTimeout(() => updatePreview(), 400);
-    }
-    const formChanged = (e) =>  {
-        console.log('form changed: %o', e);
-        const targetToggle = e.target.dataset['toggle'];
-        if (targetToggle) {
-            e.target.form[targetToggle].value = e.target.checked ? "yes" : "no";
-        }
-        updatePreview()
-    }
-    const go = new Go();
-    WebAssembly.instantiateStreaming(fetch("../assets/tplprev.wasm"), go.importObject).then((result) => {
-        go.run(result.instance);
-        document.querySelector('#tplprev .loading').style.display = "none";
-        wasmLoaded = true;
-        updatePreview();
-    });
-</script>
-<form id="tplprev" onchange="formChanged(event)" onsubmit="formSubmitted(event)">
-<pre class="loading">loading wasm...</pre>
-<div class="template-wrapper">
-<textarea name="template" type="text" onkeyup="inputUpdated()">{{- with .Report -}}
+(() => {
+  const defaultTemplate = `{{- with .Report -}}
   {{- if ( or .Updated .Failed ) -}}
 {{len .Scanned}} Scanned, {{len .Updated}} Updated, {{len .Failed}} Failed
     {{- range .Updated}}
@@ -167,85 +112,100 @@
     {{- end -}}
     {{- range .Failed}}
 - {{.Name}} ({{.ImageName}}): {{.State}}: {{.Error}}
-      {{- end -}}
+    {{- end -}}
   {{- end -}}
 {{- end -}}
 {{- if (and .Entries .Report) }}
 
 Logs:
 {{ end -}}
-{{range .Entries -}}{{.Time.Format "2006-01-02T15:04:05Z07:00"}} [{{.Level}}] {{.Message}}{{"\n"}}{{- end -}}</textarea>
-</div>
-<div class="controls">
-<fieldset>
-    <input type="hidden" name="report" value="yes" />
-    <legend><label><input type="checkbox" data-toggle="report" checked /> Container report</label></legend>
-    <label class="numfield">
-        Skipped:
-        <input type="number" name="skipped" value="3" />
-    </label>
-    <label class="numfield">
-        Scanned:
-        <input type="number" name="scanned" value="3" />
-    </label>
-    <label class="numfield">
-        Updated:
-        <input type="number" name="updated" value="3" />
-    </label>
-    <label class="numfield">
-        Failed:
-        <input type="number" name="failed" value="3" />
-    </label>
-    <label class="numfield">
-        Fresh:
-        <input type="number" name="fresh" value="3" />
-    </label>
-    <label class="numfield">
-        Stale:
-        <input type="number" name="stale" value="3" />
-    </label>
-</fieldset>
-<fieldset>
-    <input type="hidden" name="log" value="yes" />
-    <legend><label><input type="checkbox" data-toggle="log" checked /> Log entries</label></legend>
-    <label class="numfield">
-        Error: 
-        <input type="number" name="error" value="1" />
-    </label>
-    <label class="numfield">
-        Warning:
-        <input type="number" name="warning" value="2" />
-    </label>
-    <label class="numfield">
-        Info:
-        <input type="number" name="info" value="3" />
-    </label>
-    <label class="numfield">
-        Debug:
-        <input type="number" name="debug" value="4" />
-    </label>
-</fieldset>
-<button type="submit">Update preview</button>
-</div>
-<div style="result-wrapper">
-    <pre id="result"></pre>
-</div>
-</form>
-<script>
-const loadQueryVals = () => {
-    const form = document.querySelector('#tplprev');
-    const params =  new URLSearchParams(location.search);
-    for(const [key, value] of params){
-        form[key].value = value;
-        const toggleInput = form.querySelector(`[data-toggle="${key}"]`);
-        if (toggleInput) {
-            toggleInput.checked = value === "yes";
-        }
+{{range .Entries -}}{{.Time.Format "2006-01-02T15:04:05Z07:00"}} [{{.Level}}] {{.Message}}{{"\\n"}}{{- end -}}`;
+
+  const form = document.getElementById("tplprev");
+  const result = document.getElementById("tplprev-result");
+  const reportStates = ["skipped", "scanned", "updated", "failed", "fresh", "stale"];
+  const logLevels = ["error", "warning", "info", "debug"];
+  let engineReady = false;
+  let debounce;
+
+  const repeat = (name) => Array.from({ length: Math.min(50, Math.max(0, form.elements[name].valueAsNumber || 0)) }, () => name);
+
+  const show = (text, state) => {
+    result.textContent = text;
+    result.dataset.state = state;
+  };
+
+  const render = () => {
+    if (!engineReady) return;
+    document.getElementById("tplprev-report").disabled = !form.elements.report.checked;
+    document.getElementById("tplprev-log").disabled = !form.elements.log.checked;
+
+    const states = form.elements.report.checked ? reportStates.flatMap(repeat) : [];
+    const levels = form.elements.log.checked ? logLevels.flatMap(repeat) : [];
+    const output = WATCHTOWER.tplprev(form.elements.template.value, states, levels);
+
+    if (output.startsWith("Error: ")) {
+      show(output.substring(7), "error");
+    } else if (output.length) {
+      show(output, "ok");
+    } else {
+      show("The template rendered an empty message, so no notification would be sent.", "empty");
     }
-}
-if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", loadQueryVals());
-} else {
-    loadQueryVals();
-}
+  };
+
+  const scheduleRender = () => {
+    clearTimeout(debounce);
+    debounce = setTimeout(render, 250);
+  };
+
+  const loadFromQuery = () => {
+    const params = new URLSearchParams(location.search);
+    form.elements.template.value = params.get("template") ?? defaultTemplate;
+    for (const [key, value] of params) {
+      const field = form.elements[key];
+      if (!field || key === "template") continue;
+      if (field.type === "checkbox") {
+        field.checked = value === "yes";
+      } else {
+        field.value = value;
+      }
+    }
+  };
+
+  const shareLink = async (event) => {
+    const params = new URLSearchParams();
+    for (const field of form.elements) {
+      if (!field.name) continue;
+      params.set(field.name, field.type === "checkbox" ? (field.checked ? "yes" : "no") : field.value);
+    }
+    const url = `${location.origin}${location.pathname}?${params}`;
+    history.replaceState(null, "", url);
+    try {
+      await navigator.clipboard.writeText(url);
+      event.target.textContent = "Copied";
+    } catch {
+      event.target.textContent = "Link in address bar";
+    }
+    setTimeout(() => (event.target.textContent = "Copy link"), 2000);
+  };
+
+  loadFromQuery();
+  form.addEventListener("input", scheduleRender);
+  form.addEventListener("change", render);
+  form.addEventListener("submit", (event) => event.preventDefault());
+  document.getElementById("tplprev-share").addEventListener("click", shareLink);
+  document.getElementById("tplprev-reset").addEventListener("click", () => {
+    form.elements.template.value = defaultTemplate;
+    render();
+  });
+
+  const go = new Go();
+  WebAssembly.instantiateStreaming(fetch("../assets/tplprev.wasm"), go.importObject)
+    .then(({ instance }) => {
+      go.run(instance);
+      engineReady = true;
+      render();
+    })
+    .catch((err) => show(`The template engine could not be loaded: ${err}`, "error"));
+})();
 </script>

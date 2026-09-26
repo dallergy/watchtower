@@ -1,6 +1,7 @@
 # Compose and environment variables
 
-Watchtower is a single container. The published image includes the updater **and** Apprise, so a typical stack is only Watchtower plus the Docker socket.
+Watchtower is a single container. Notifications are sent by Watchtower itself, so a typical stack is only Watchtower plus
+the Docker socket.
 
 ## Quick start
 
@@ -8,13 +9,13 @@ Watchtower is a single container. The published image includes the updater **and
    ```bash
    cp .env.example .env
    ```
-2. Edit `.env`. For Gotify set `WATCHTOWER_NOTIFICATIONS=gotify`, `WATCHTOWER_NOTIFICATION_GOTIFY_URL`, and `WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN`.
+2. Edit `.env`, for example set `WATCHTOWER_NOTIFICATION_URL` to your [notification service](notifications.md#supported_services).
 3. Start Watchtower:
    ```bash
    docker compose up -d
    ```
 
-The repository `docker-compose.yml` is deploy-ready: one service, no Prometheus, Grafana, or Apprise sidecar.
+The repository `docker-compose.yml` is deploy-ready: one service and no sidecars.
 
 ## Compose file
 
@@ -32,10 +33,8 @@ services:
       WATCHTOWER_POLL_INTERVAL: "86400"
       WATCHTOWER_NOTIFICATION_REPORT: "true"
       WATCHTOWER_NO_STARTUP_MESSAGE: "true"
-      WATCHTOWER_NOTIFICATIONS: gotify
       WATCHTOWER_NOTIFICATIONS_LEVEL: info
-      WATCHTOWER_NOTIFICATION_GOTIFY_URL: https://gotify.example.com/
-      WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN: your.gotify.application.token
+      WATCHTOWER_NOTIFICATION_URL: gotifys://gotify.example.com/your.gotify.application.token
 ```
 
 Build a local image instead of pulling:
@@ -62,18 +61,16 @@ Every CLI flag has a matching `WATCHTOWER_*` (or Docker) environment variable. B
 | `WATCHTOWER_TIMEOUT` | `10s` | How long to wait for a container to stop |
 | `WATCHTOWER_RUN_ONCE` | `false` | Check once and exit |
 
-The Docker socket must be mounted at `/var/run/docker.sock` (read-only is enough).
+The Docker socket must be mounted at `/var/run/docker.sock`. Mounting it read-only (`:ro`) only prevents the socket
+file from being replaced; Watchtower still has full control over the Docker daemon.
 
 ### Notifications
 
-Gotify is built into Watchtower and talks to your Gotify server over HTTP. Do **not** set `WATCHTOWER_NOTIFICATION_APPRISE_URL` for this.
+Notification services are configured with URLs, see [Notifications](notifications.md) for the formats.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `WATCHTOWER_NOTIFICATIONS` | unset | Set to `gotify` (add `email`, `slack`, or `msteams` if needed) |
-| `WATCHTOWER_NOTIFICATION_GOTIFY_URL` | unset | Gotify base URL, e.g. `https://gotify.example.com/` |
-| `WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN` | unset | Gotify application token |
-| `WATCHTOWER_NOTIFICATION_GOTIFY_TLS_SKIP_VERIFY` | `false` | Skip TLS verify (testing only) |
+| `WATCHTOWER_NOTIFICATION_URL` | unset | Space-separated [notification URLs](notifications.md#supported_services) (Gotify, ntfy, Slack, Discord, Telegram, email, …) |
 | `WATCHTOWER_NOTIFICATIONS_LEVEL` | `info` | Minimum log level that is forwarded to notifications |
 | `WATCHTOWER_NOTIFICATION_REPORT` | `false` | Send a session summary instead of raw log lines |
 | `WATCHTOWER_NOTIFICATION_TEMPLATE` | built-in | Custom Go template for the message body |
@@ -82,12 +79,12 @@ Gotify is built into Watchtower and talks to your Gotify server over HTTP. Do **
 | `WATCHTOWER_NOTIFICATION_TITLE_TAG` | unset | Prefix in the notification title |
 | `WATCHTOWER_NOTIFICATION_SKIP_TITLE` | `false` | Do not send a title |
 | `WATCHTOWER_NO_STARTUP_MESSAGE` | `false` | Do not notify when Watchtower starts |
-| `WATCHTOWER_NOTIFICATION_URL` | unset | Extra [Apprise URLs](https://github.com/caronc/apprise/wiki) (Discord, Telegram, …) |
-| `WATCHTOWER_NOTIFICATION_APPRISE_CONFIG` | unset | Path inside the container to an Apprise config file |
-| `WATCHTOWER_NOTIFICATION_APPRISE_URL` | unset | Optional external Apprise API; not used for Gotify |
-| `WATCHTOWER_NOTIFICATION_APPRISE_KEY` | unset | API key, only used with `WATCHTOWER_NOTIFICATION_APPRISE_URL` |
+| `WATCHTOWER_NOTIFICATION_APPRISE_CONFIG` | unset | Path inside the container to an Apprise config file with more URLs |
+| `WATCHTOWER_NOTIFICATION_APPRISE_URL` | unset | Optional Apprise API server, used for services that are not built in |
+| `WATCHTOWER_NOTIFICATION_APPRISE_KEY` | unset | Stored Apprise API configuration to notify as well |
 
-Legacy email/slack/msteams flags still work. Prefer Gotify's dedicated variables above, or `WATCHTOWER_NOTIFICATION_URL` for other Apprise services.
+The legacy `WATCHTOWER_NOTIFICATIONS` options (`email`, `slack`, `msteams`, `gotify` and their variables) still work,
+see [legacy notifications](notifications.md#legacy_notifications).
 
 ### Container selection
 
@@ -118,7 +115,7 @@ You can also pass container names as the service `command` so only those names a
 | `WATCHTOWER_HTTP_API_METRICS` | Expose Prometheus metrics at `/v1/metrics` |
 | `WATCHTOWER_HTTP_API_TOKEN` | Bearer token required by the HTTP API |
 
-Map host port `8080` if you enable the API. There is no bundled Grafana or Prometheus.
+Map host port `8080` if you enable the API.
 
 ### Logging and Docker
 
@@ -129,7 +126,7 @@ Map host port `8080` if you enable the API. There is no bundled Grafana or Prome
 | `WATCHTOWER_LOG_FORMAT` | `Auto`, `LogFmt`, `Pretty`, `JSON` |
 | `NO_COLOR` | Disable ANSI colors |
 | `DOCKER_HOST` | Docker daemon URL (default `unix:///var/run/docker.sock`) |
-| `DOCKER_API_VERSION` | Docker API version |
+| `DOCKER_API_VERSION` | Pin the Docker API version (negotiated automatically when unset) |
 | `DOCKER_TLS_VERIFY` | Verify TLS when using a TCP Docker host |
 | `REPO_USER` / `REPO_PASS` | Private registry credentials (or mount `config.json`) |
 

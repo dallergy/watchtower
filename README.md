@@ -1,98 +1,108 @@
 <div align="center">
 
-  ### Community-maintained fork
-  The original [containrrr/watchtower](https://github.com/dallergy/watchtower) project is no longer maintained.
-  This fork is actively maintained by [dallergy](https://github.com/dallergy) and published to Docker Hub as [shounak6942/watchtower](https://hub.docker.com/r/shounak6942/watchtower).
+<img src="./logo.png" width="112" alt="Watchtower logo" />
 
-  ---
-  
-  <img src="./logo.png" width="450" />
-  
-  # Watchtower
-  
-  A process for automating Docker container base image updates.
-  <br/><br/>
-  
-  [![CI](https://github.com/dallergy/watchtower/actions/workflows/pull-request.yml/badge.svg)](https://github.com/dallergy/watchtower/actions/workflows/pull-request.yml)
-  [![codecov](https://codecov.io/gh/dallergy/watchtower/branch/main/graph/badge.svg)](https://codecov.io/gh/dallergy/watchtower)
-  [![GoDoc](https://godoc.org/github.com/dallergy/watchtower?status.svg)](https://godoc.org/github.com/dallergy/watchtower)
-  [![Go Report Card](https://goreportcard.com/badge/github.com/dallergy/watchtower)](https://goreportcard.com/report/github.com/dallergy/watchtower)
-  [![latest version](https://img.shields.io/github/tag/dallergy/watchtower.svg)](https://github.com/dallergy/watchtower/releases)
-  [![Apache-2.0 License](https://img.shields.io/github/license/dallergy/watchtower.svg)](https://www.apache.org/licenses/LICENSE-2.0)
+# Watchtower
+
+**Keep your Docker containers up to date, automatically.**
+
+[![CI](https://github.com/dallergy/watchtower/actions/workflows/pull-request.yml/badge.svg)](https://github.com/dallergy/watchtower/actions/workflows/pull-request.yml)
+[![Docker Hub](https://img.shields.io/docker/pulls/shounak6942/watchtower?label=docker%20hub)](https://hub.docker.com/r/shounak6942/watchtower)
+[![Image size](https://img.shields.io/docker/image-size/shounak6942/watchtower/latest?label=image)](https://hub.docker.com/r/shounak6942/watchtower/tags)
+[![Go Report Card](https://goreportcard.com/badge/github.com/dallergy/watchtower)](https://goreportcard.com/report/github.com/dallergy/watchtower)
+[![License](https://img.shields.io/github/license/dallergy/watchtower)](LICENSE.md)
+
+[Documentation](https://dallergy.github.io/watchtower/) ·
+[Notifications](https://dallergy.github.io/watchtower/notifications/) ·
+[Docker Hub](https://hub.docker.com/r/shounak6942/watchtower)
 
 </div>
 
-## Quick Start
+> [!NOTE]
+> This is a community-maintained fork of [containrrr/watchtower](https://github.com/containrrr/watchtower), which is no
+> longer maintained. To switch, replace `containrrr/watchtower` with `shounak6942/watchtower`. Notification URLs now use
+> Apprise instead of Shoutrrr syntax, see
+> [migrating from Shoutrrr](https://dallergy.github.io/watchtower/notifications/#migrating_from_shoutrrr).
 
-With watchtower you can update the running version of your containerized app simply by pushing a new image to the Docker Hub or your own image registry. 
+Watchtower watches your running containers. When a newer image is pushed to the registry, it pulls the image,
+gracefully stops the container and starts it again with the exact options it was originally started with.
 
-Watchtower will pull down your new image, gracefully shut down your existing container and restart it with the same options that were used when it was deployed initially. Run the watchtower container with the following command:
+## Quick start
 
+```bash
+docker run --detach \
+  --name watchtower \
+  --restart unless-stopped \
+  --volume /var/run/docker.sock:/var/run/docker.sock \
+  shounak6942/watchtower
 ```
-$ docker run --detach \
-    --name watchtower \
-    --restart unless-stopped \
-    --volume /var/run/docker.sock:/var/run/docker.sock \
-    shounak6942/watchtower:latest
-```
 
-Or with Compose (`cp .env.example .env` then `docker compose up -d`):
+Or with Compose, using the [`docker-compose.yml`](docker-compose.yml) in this repository
+(`cp .env.example .env`, then `docker compose up -d`):
 
 ```yaml
 services:
   watchtower:
-    image: shounak6942/watchtower:latest
+    image: shounak6942/watchtower
     restart: unless-stopped
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       WATCHTOWER_CLEANUP: "true"
-      WATCHTOWER_NOTIFICATIONS: gotify
-      WATCHTOWER_NOTIFICATION_GOTIFY_URL: https://gotify.example.com/
-      WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN: your.gotify.application.token
+      WATCHTOWER_NOTIFICATION_REPORT: "true"
+      WATCHTOWER_NOTIFICATION_URL: gotifys://gotify.example.com/your.gotify.application.token
 ```
 
-Gotify is built in (no Apprise sidecar). Other services use bundled Apprise. See [docs/compose.md](docs/compose.md) and [docs/notifications.md](docs/notifications.md).
+## Highlights
 
-### Image availability
+- **Small and secure**: a static binary on an empty (`scratch`) base image. There is no shell and there are no OS
+  packages, and every build is scanned for vulnerabilities before it is published.
+- **Built-in notifications**: Gotify, ntfy, Slack, Discord, Telegram, email, Microsoft Teams, Pushover and webhooks,
+  configured with [Apprise](https://github.com/caronc/apprise) style URLs, with no sidecar container.
+- **Current Docker support**: the Docker API version is negotiated with the daemon, from Docker Engine 19.03 to the
+  latest releases.
+- **Multi-platform**: `linux/amd64`, `linux/arm64`, `linux/arm/v7`, `linux/arm/v6` and `linux/386`.
 
-Container images are published to **Docker Hub** and **GitHub Container Registry** on every push to `main` and on version tags.
+## Images
 
-| Registry | Image | Tags |
-|----------|-------|------|
-| Docker Hub | `shounak6942/watchtower` | `latest`, `latest-dev`, version tags |
-| GHCR | `ghcr.io/dallergy/watchtower` | `latest`, `latest-dev`, version tags |
+| Registry   | Image                         | Tags                                                              |
+|------------|-------------------------------|-------------------------------------------------------------------|
+| Docker Hub | `shounak6942/watchtower`      | `latest` and `latest-dev` (main branch), `sha-<commit>`, versions |
+| GHCR       | `ghcr.io/dallergy/watchtower` | `latest` and `latest-dev` (main branch), `sha-<commit>`, versions |
 
-Docker Hub publishing requires repository secrets `DOCKER_USERNAME` (must be `shounak6942`) and `DOCKER_PASSWORD`. Use a Docker Hub [access token](https://docs.docker.com/security/for-developers/access-tokens/) with **Read, Write & Delete** permissions (account passwords with 2FA enabled will not work).
+Images come with an SBOM and build provenance attestations.
 
-If you see `error from registry: denied` when pulling from GHCR, the package is likely still **private**. To make it publicly pullable:
+## Notifications
 
-1. Open [github.com/users/dallergy/packages/container/watchtower](https://github.com/users/dallergy/packages/container/package/watchtower)
-2. Go to **Package settings**
-3. Change visibility to **Public**
+Set `WATCHTOWER_NOTIFICATION_URL` to one or more space-separated URLs:
 
-Until the GHCR package is public, use the Docker Hub image or build locally:
+| Service  | Example                                                   |
+|----------|-----------------------------------------------------------|
+| Gotify   | `gotifys://gotify.example.com/AbCdEfGhIjKlMnO`            |
+| ntfy     | `ntfys://ntfy.example.com/watchtower`                     |
+| Slack    | `slack://tokenA/tokenB/tokenC/#updates`                   |
+| Discord  | `discord://webhook_id/webhook_token`                      |
+| Telegram | `tgram://123456789:AbCdEf/-1001234567890`                 |
+| Email    | `mailtos://user:app_password@smtp.example.com?to=me@example.com` |
 
-```
-$ git clone https://github.com/dallergy/watchtower.git
-$ cd watchtower
-$ docker build -f dockerfiles/Dockerfile.dev-self-contained -t watchtower .
-$ docker run --detach \
-    --name watchtower \
-    --volume /var/run/docker.sock:/var/run/docker.sock \
-    watchtower
-```
+See the [notification docs](https://dallergy.github.io/watchtower/notifications/) for every service, option and
+template, and the [template preview](https://dallergy.github.io/watchtower/template-preview/) to try out message
+templates in your browser.
 
-Watchtower is intended to be used in homelabs, media centers, local dev environments, and similar. We do **not** recommend using Watchtower in a commercial or production environment. If that is you, you should be looking into using Kubernetes. If that feels like too big a step for you, please look into solutions like [MicroK8s](https://microk8s.io/) and [k3s](https://k3s.io/) that take away a lot of the toil of running a Kubernetes cluster. 
+## Where Watchtower fits
+
+Watchtower is intended for homelabs, media centers, local development environments and similar setups. For
+commercial or production environments, look at Kubernetes, or lighter options such as
+[MicroK8s](https://microk8s.io/) and [k3s](https://k3s.io/).
 
 ## Documentation
-The full documentation is available in the [docs](./docs/) directory and on [GitHub Pages](https://dallergy.github.io/watchtower/).
 
-> **Note:** This is a community-maintained fork. Use the `shounak6942/watchtower` image on Docker Hub instead of the unmaintained `containrrr/watchtower` image.
+The full documentation is available at [dallergy.github.io/watchtower](https://dallergy.github.io/watchtower/) and in
+the [docs](./docs/) directory. To build Watchtower yourself, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Contributors
+## Credits
 
-Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
+Watchtower was created by the contributors of the original [containrrr/watchtower](https://github.com/containrrr/watchtower) project. Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
 
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
 <!-- prettier-ignore-start -->

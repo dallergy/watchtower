@@ -1,4 +1,4 @@
-Watchtower is itself packaged as a Docker container so installation is as simple as pulling the `shounak6942/watchtower` image. If you are using ARM based architecture, pull the appropriate `shounak6942/watchtower:armhf-<tag>` image from the [containrrr Docker Hub](https://hub.docker.com/r/shounak6942/watchtower/tags/).
+Watchtower is itself packaged as a Docker container so installation is as simple as pulling the `shounak6942/watchtower` image from [Docker Hub](https://hub.docker.com/r/shounak6942/watchtower), or `ghcr.io/dallergy/watchtower` from the GitHub Container Registry. The images are multi-platform (amd64, arm64, armv7, armv6 and 386), so Docker picks the right variant for your machine.
 
 Since the watchtower code needs to interact with the Docker API in order to monitor the running containers, you need to mount _/var/run/docker.sock_ into the container with the `-v` flag when you run it.
 
