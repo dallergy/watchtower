@@ -72,6 +72,11 @@ var _ = Describe("Apprise", func() {
 		})
 	})
 
+	AfterEach(func() {
+		// Notifier hooks would otherwise keep receiving (and delaying) the log output of other specs
+		logrus.StandardLogger().ReplaceHooks(make(logrus.LevelHooks))
+	})
+
 	When("passing a common template name", func() {
 		It("should format using that template", func() {
 			expected := `

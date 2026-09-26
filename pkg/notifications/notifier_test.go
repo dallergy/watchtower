@@ -145,7 +145,7 @@ var _ = Describe("notifications", func() {
 			token := "abvsihdbau"
 			username := "containrrrbot"
 			iconURL := "https://containrrr.dev/watchtower-sq180.png"
-			expected := fmt.Sprintf("discord://%s/%s?username=watchtower", channel, token)
+			expected := fmt.Sprintf("discord://watchtower@%s/%s", channel, token)
 			buildArgs := func(url string) []string {
 				return []string{
 					"--notifications",
@@ -166,7 +166,7 @@ var _ = Describe("notifications", func() {
 			When("icon URL and username are specified", func() {
 				It("should return the expected URL", func() {
 					hookURL := fmt.Sprintf("https://%s/api/webhooks/%s/%s/slack", "discord.com", channel, token)
-					expectedOutput := fmt.Sprintf("discord://%s/%s?avatar=%s&username=%s", channel, token, url.QueryEscape(iconURL), username)
+					expectedOutput := fmt.Sprintf("discord://%s@%s/%s?avatar_url=%s", username, channel, token, url.QueryEscape(iconURL))
 					expectedDelay := time.Duration(7) * time.Second
 					args := []string{
 						"--notifications",
@@ -199,7 +199,7 @@ var _ = Describe("notifications", func() {
 				It("should return the expected URL", func() {
 
 					hookURL := fmt.Sprintf("https://hooks.slack.com/services/%s/%s/%s", tokenA, tokenB, tokenC)
-					expectedOutput := fmt.Sprintf("slack://%s@%s/%s/%s?image=%s", username, tokenA, tokenB, tokenC, url.QueryEscape(iconURL))
+					expectedOutput := fmt.Sprintf("slack://%s@%s/%s/%s?icon_url=%s", username, tokenA, tokenB, tokenC, url.QueryEscape(iconURL))
 					expectedDelay := time.Duration(7) * time.Second
 
 					args := []string{
@@ -222,7 +222,7 @@ var _ = Describe("notifications", func() {
 			When("icon emoji is specified", func() {
 				It("should return the expected URL", func() {
 					hookURL := fmt.Sprintf("https://hooks.slack.com/services/%s/%s/%s", tokenA, tokenB, tokenC)
-					expectedOutput := fmt.Sprintf("slack://%s@%s/%s/%s?image=%s", username, tokenA, tokenB, tokenC, iconEmoji)
+					expectedOutput := fmt.Sprintf("slack://%s@%s/%s/%s?icon_emoji=%s", username, tokenA, tokenB, tokenC, iconEmoji)
 
 					args := []string{
 						"--notifications",
@@ -263,6 +263,19 @@ var _ = Describe("notifications", func() {
 
 				testURL(args, expectedOutput, time.Duration(0))
 			})
+			It("should disable certificate verification when requested", func() {
+				args := []string{
+					"--notifications",
+					"gotify",
+					"--notification-gotify-url",
+					"https://gotify.local/sub/",
+					"--notification-gotify-token",
+					"aaa",
+					"--notification-gotify-tls-skip-verify",
+				}
+
+				testURL(args, "gotifys://gotify.local/sub/aaa?verify=no", time.Duration(0))
+			})
 		})
 	})
 
@@ -287,6 +300,28 @@ var _ = Describe("notifications", func() {
 				}
 
 				testURL(args, expectedOutput, time.Duration(0))
+			})
+			It("should support team specific webhook hosts", func() {
+				hookURL := "https://contoso.webhook.office.com/webhookb2/aaa@bbb/IncomingWebhook/ccc/ddd/eee"
+				args := []string{
+					"--notifications",
+					"msteams",
+					"--notification-msteams-hook",
+					hookURL,
+				}
+
+				testURL(args, "msteams://contoso/aaa@bbb/ccc/ddd/eee", time.Duration(0))
+			})
+			It("should pass Power Automate workflow URLs through", func() {
+				hookURL := "https://prod-01.westus.logic.azure.com:443/workflows/abc/triggers/manual/paths/invoke?api-version=2016-06-01&sig=xyz"
+				args := []string{
+					"--notifications",
+					"msteams",
+					"--notification-msteams-hook",
+					hookURL,
+				}
+
+				testURL(args, hookURL, time.Duration(0))
 			})
 		})
 	})

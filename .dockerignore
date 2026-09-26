@@ -1,0 +1,12 @@
+.git
+.github
+.devbots
+dist
+site
+docs
+dockerfiles
+*.png
+*.md
+coverage.out
+watchtower
+watchtower.exe

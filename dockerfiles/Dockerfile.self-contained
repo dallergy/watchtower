@@ -1,50 +1,33 @@
+# Builds Watchtower from a published version, without needing a local checkout:
 #
-# Builder
-#
+#   docker build -f Dockerfile.self-contained --build-arg WATCHTOWER_VERSION=main -t watchtower .
+FROM --platform=$BUILDPLATFORM golang:1.27-alpine AS builder
 
-FROM golang:alpine AS builder
-
-# use version (for example "v1.7.2") or "main"
+# use a version tag (for example "v1.8.0") or "main"
 ARG WATCHTOWER_VERSION=main
 ARG WATCHTOWER_REPO=https://github.com/dallergy/watchtower.git
+ARG TARGETOS
+ARG TARGETARCH
+ARG TARGETVARIANT
 
-RUN apk add --no-cache \
-    alpine-sdk \
-    ca-certificates \
-    git \
-    tzdata
+RUN apk add --no-cache git
+RUN git clone --depth 1 --branch "${WATCHTOWER_VERSION}" "${WATCHTOWER_REPO}" /src
 
-RUN git clone --branch "${WATCHTOWER_VERSION}" "${WATCHTOWER_REPO}"
+WORKDIR /src
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GOARM=${TARGETVARIANT#v} \
+    go build -trimpath -tags timetzdata \
+      -ldflags "-s -w -X github.com/dallergy/watchtower/internal/meta.Version=${WATCHTOWER_VERSION}" \
+      -o /out/watchtower .
 
-RUN \
-  cd watchtower && \
-  \
-  GO111MODULE=on CGO_ENABLED=0 GOOS=linux go build -a -ldflags "-extldflags '-static' -X github.com/dallergy/watchtower/internal/meta.Version=$(git describe --tags)" . && \
-  GO111MODULE=on go test ./... -v
-
-
-#
-# watchtower
-#
-
-FROM alpine:3.21
+FROM scratch
 
 LABEL "com.centurylinklabs.watchtower"="true"
 
-RUN apk add --no-cache \
-        ca-certificates \
-        tzdata \
-        python3 \
-        py3-pip \
-    && pip3 install --no-cache-dir --break-system-packages "apprise==1.9.3" \
-    && apk del --no-network py3-pip \
-    && find /usr -type d -name '__pycache__' -prune -exec rm -rf {} + || true \
-    && rm -rf /root/.cache /tmp/* /var/cache/apk/*
-
-COPY --from=builder /go/watchtower/watchtower /watchtower
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=builder /out/watchtower /watchtower
 
 EXPOSE 8080
 
-HEALTHCHECK CMD [ "/watchtower", "--health-check"]
+HEALTHCHECK CMD ["/watchtower", "--health-check"]
 
 ENTRYPOINT ["/watchtower"]

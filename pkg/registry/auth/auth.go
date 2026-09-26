@@ -38,7 +38,7 @@ func GetToken(container types.Container, registryAuth string) (string, error) {
 	if res, err = client.Do(req); err != nil {
 		return "", err
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	v := res.Header.Get(ChallengeHeader)
 
 	logrus.WithFields(logrus.Fields{

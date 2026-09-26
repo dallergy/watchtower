@@ -45,13 +45,18 @@ func (n *msTeamsTypeNotifier) GetURL(c *cobra.Command) (string, error) {
 
 	path := strings.Trim(webhookURL.Path, "/")
 	parts := strings.Split(path, "/")
-	if len(parts) < 5 || parts[2] != "IncomingWebhook" {
-		return "", fmt.Errorf("invalid msteams webhook URL")
+
+	switch {
+	case strings.Contains(path, "workflows/") && strings.Contains(path, "/triggers/"):
+		// Power Automate workflows, which replace Office 365 connectors, are posted to as-is
+		return n.webHookURL, nil
+	case strings.HasSuffix(webhookURL.Host, ".webhook.office.com") && len(parts) >= 5 && parts[2] == "IncomingWebhook":
+		team := strings.TrimSuffix(webhookURL.Host, ".webhook.office.com")
+		tokens := append([]string{team, parts[1]}, parts[3:]...)
+		return "msteams://" + strings.Join(tokens, "/"), nil
+	case len(parts) >= 5 && parts[2] == "IncomingWebhook":
+		return fmt.Sprintf("msteams://%s/%s/%s/", parts[1], parts[3], parts[4]), nil
 	}
 
-	tokenA := parts[1]
-	tokenB := parts[3]
-	tokenC := parts[4]
-
-	return fmt.Sprintf("msteams://%s/%s/%s/", tokenA, tokenB, tokenC), nil
+	return "", fmt.Errorf("invalid msteams webhook URL")
 }

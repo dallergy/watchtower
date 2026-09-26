@@ -113,7 +113,7 @@ func GetDigest(url string, token string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	if res.StatusCode != 200 {
 		wwwAuthHeader := res.Header.Get("www-authenticate")
