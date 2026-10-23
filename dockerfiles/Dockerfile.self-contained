@@ -1,7 +1,7 @@
 # Builds Watchtower from a published version, without needing a local checkout:
 #
 #   docker build -f Dockerfile.self-contained --build-arg WATCHTOWER_VERSION=main -t watchtower .
-FROM --platform=$BUILDPLATFORM golang:1.27-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.27.3-alpine AS builder
 
 # use a version tag (for example "v1.8.0") or "main"
 ARG WATCHTOWER_VERSION=main

@@ -2,7 +2,7 @@
 #
 # Watchtower is a static binary with the time zone database embedded, so the image only adds
 # CA certificates on top of an empty base: there are no OS packages to patch.
-FROM --platform=$BUILDPLATFORM alpine:3.24 AS certs
+FROM --platform=$BUILDPLATFORM alpine:3.24.3 AS certs
 
 FROM scratch
 ARG TARGETPLATFORM
