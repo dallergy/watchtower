@@ -1,13 +1,22 @@
 package api
 
 import (
-	"fmt"
+	"crypto/subtle"
 	"net/http"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 )
 
 const tokenMissingMsg = "api token is empty or has not been set. exiting"
+
+// Timeouts protecting the API from clients that keep connections open without completing
+// requests. There is no write timeout, as update requests only finish when the update does.
+const (
+	readHeaderTimeout = 10 * time.Second
+	readTimeout       = 30 * time.Second
+	idleTimeout       = 2 * time.Minute
+)
 
 // API is the http server responsible for serving the HTTP API endpoints
 type API struct {
@@ -27,8 +36,8 @@ func New(token string) *API {
 func (api *API) RequireToken(fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		auth := r.Header.Get("Authorization")
-		want := fmt.Sprintf("Bearer %s", api.Token)
-		if auth != want {
+		want := "Bearer " + api.Token
+		if subtle.ConstantTimeCompare([]byte(auth), []byte(want)) != 1 {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
@@ -72,5 +81,11 @@ func (api *API) Start(block bool) error {
 }
 
 func runHTTPServer() {
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	server := &http.Server{
+		Addr:              ":8080",
+		ReadHeaderTimeout: readHeaderTimeout,
+		ReadTimeout:       readTimeout,
+		IdleTimeout:       idleTimeout,
+	}
+	log.Fatal(server.ListenAndServe())
 }

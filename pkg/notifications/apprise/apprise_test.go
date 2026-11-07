@@ -468,6 +468,40 @@ func TestConnectionErrorsHideTokens(t *testing.T) {
 	assert.Contains(t, err.Error(), address)
 }
 
+func TestCrossHostRedirectsAreNotFollowed(t *testing.T) {
+	var leaked []string
+	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		leaked = append(leaked, r.Header.Get("X-Secret"))
+	}))
+	defer other.Close()
+	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, other.URL+"/steal", http.StatusTemporaryRedirect)
+	}))
+	defer origin.Close()
+
+	service, err := Parse("json://"+strings.TrimPrefix(origin.URL, "http://")+"/hook?+X-Secret=s3cret", Options{})
+	require.NoError(t, err)
+	err = service.Send(context.Background(), testMessage)
+	assert.ErrorContains(t, err, "redirected to another host")
+	assert.Empty(t, leaked, "the secret header must not reach the other host")
+}
+
+func TestSameHostRedirectsAreFollowed(t *testing.T) {
+	var paths []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		paths = append(paths, r.URL.Path)
+		if r.URL.Path == "/old" {
+			http.Redirect(w, r, "/new", http.StatusPermanentRedirect)
+		}
+	}))
+	defer server.Close()
+
+	service, err := Parse("json://"+strings.TrimPrefix(server.URL, "http://")+"/old", Options{})
+	require.NoError(t, err)
+	require.NoError(t, service.Send(context.Background(), testMessage))
+	assert.Equal(t, []string{"/old", "/new"}, paths)
+}
+
 func TestTruncate(t *testing.T) {
 	assert.Equal(t, "short", truncate("short", 10))
 	assert.Equal(t, "åäö…", truncate("åäöåäö", 4))

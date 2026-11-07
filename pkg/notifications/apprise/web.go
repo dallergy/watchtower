@@ -43,10 +43,24 @@ func newWebClient(u *serviceURL, opts Options) *webClient {
 
 	return &webClient{
 		client: &http.Client{
-			Timeout:   requestTimeout,
-			Transport: transport,
+			Timeout:       requestTimeout,
+			Transport:     transport,
+			CheckRedirect: SameHostRedirects,
 		},
 	}
+}
+
+// SameHostRedirects is an http.Client redirect policy that only follows redirects to the same
+// host. Go strips the Authorization header from redirects to other hosts, but not headers such
+// as X-Gotify-Key or custom webhook headers, and 307/308 redirects also repeat the request body.
+func SameHostRedirects(req *http.Request, via []*http.Request) error {
+	if len(via) >= 10 {
+		return errors.New("stopped after 10 redirects")
+	}
+	if req.URL.Host != via[0].URL.Host {
+		return http.ErrUseLastResponse
+	}
+	return nil
 }
 
 // postJSON sends the payload as JSON and returns the response body
@@ -104,6 +118,9 @@ func (w *webClient) do(ctx context.Context, method string, endpoint string, body
 			}
 		}
 
+		if location, err := res.Location(); err == nil && location.Host != req.URL.Host {
+			return nil, fmt.Errorf("%s redirected to another host (%s), update the notification URL", req.URL.Host, location.Host)
+		}
 		if res.StatusCode < 200 || res.StatusCode > 299 {
 			return nil, fmt.Errorf("%s responded with %s%s", req.URL.Host, res.Status, describeBody(resBody))
 		}

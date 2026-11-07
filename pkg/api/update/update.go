@@ -3,11 +3,13 @@ package update
 import (
 	"io"
 	"net/http"
-	"os"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
 )
+
+// maxBodySize limits how much of a request body is read
+const maxBodySize = 64 * 1024
 
 var (
 	lock chan bool
@@ -38,11 +40,8 @@ type Handler struct {
 func (handle *Handler) Handle(w http.ResponseWriter, r *http.Request) {
 	log.Info("Updates triggered by HTTP API request.")
 
-	_, err := io.Copy(os.Stdout, r.Body)
-	if err != nil {
-		log.Println(err)
-		return
-	}
+	// The request body is not used, but is drained (up to a limit) so the connection can be reused
+	_, _ = io.Copy(io.Discard, io.LimitReader(r.Body, maxBodySize))
 
 	var images []string
 	imageQueries, found := r.URL.Query()["image"]
