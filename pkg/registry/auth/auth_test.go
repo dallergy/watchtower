@@ -2,6 +2,8 @@ package auth_test
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"strings"
@@ -82,15 +84,47 @@ var _ = Describe("the auth module", func() {
 			Expect(URL).To(Equal(expected))
 		})
 
-		When("given an invalid challenge header", func() {
+		When("given a challenge header without a realm", func() {
 			It("should return an error", func() {
-				challenge := `bearer realm="https://ghcr.io/token"`
+				challenge := `bearer service="ghcr.io"`
 				imageRef, err := ref.ParseNormalizedNamed("containrrr/watchtower")
 				Expect(err).NotTo(HaveOccurred())
 				URL, err := auth.GetAuthURL(challenge, imageRef)
 				Expect(err).To(HaveOccurred())
 				Expect(URL).To(BeNil())
 			})
+		})
+
+		When("given a challenge header without a service", func() {
+			It("should omit the service from the auth url", func() {
+				challenge := `Bearer realm="https://mirror.gcr.io/v2/token"`
+				imageRef, err := ref.ParseNormalizedNamed("mirror.gcr.io/library/alpine")
+				Expect(err).NotTo(HaveOccurred())
+				URL, err := auth.GetAuthURL(challenge, imageRef)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(URL.String()).To(Equal("https://mirror.gcr.io/v2/token?scope=repository%3Alibrary%2Falpine%3Apull"))
+			})
+		})
+
+		It("should keep the case of the realm and service", func() {
+			challenge := `Bearer realm="https://Registry.example.com/Service/Token?Tenant=ABC",service="Harbor-Registry"`
+			imageRef, err := ref.ParseNormalizedNamed("registry.example.com/team/app")
+			Expect(err).NotTo(HaveOccurred())
+			URL, err := auth.GetAuthURL(challenge, imageRef)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(URL.Path).To(Equal("/Service/Token"))
+			Expect(URL.Query().Get("Tenant")).To(Equal("ABC"))
+			Expect(URL.Query().Get("service")).To(Equal("Harbor-Registry"))
+		})
+
+		It("should not split quoted values on commas", func() {
+			challenge := `Bearer scope="repository:a/b:pull,push",realm="https://auth.example.com/token",service="example"`
+			imageRef, err := ref.ParseNormalizedNamed("example.com/a/b")
+			Expect(err).NotTo(HaveOccurred())
+			URL, err := auth.GetAuthURL(challenge, imageRef)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(URL.Host).To(Equal("auth.example.com"))
+			Expect(URL.Query().Get("service")).To(Equal("example"))
 		})
 
 		When("deriving the auth scope from an image name", func() {
@@ -127,6 +161,60 @@ var _ = Describe("the auth module", func() {
 			res, err := auth.GetAuthURL(input, imageRef)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(res).NotTo(BeNil())
+		})
+	})
+
+	Describe("GetBearerHeader", func() {
+		var server *httptest.Server
+		var requests int
+		var response string
+		var status int
+		imageRef, _ := ref.ParseNormalizedNamed("registry.example.com/team/app")
+
+		BeforeEach(func() {
+			requests = 0
+			status = http.StatusOK
+			response = `{"token":"abc"}`
+			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests++
+				w.WriteHeader(status)
+				_, _ = w.Write([]byte(response))
+			}))
+		})
+		AfterEach(func() {
+			server.Close()
+		})
+
+		challenge := func() string {
+			return fmt.Sprintf(`Bearer realm="%s/token",service="registry"`, server.URL)
+		}
+
+		It("should return the token", func() {
+			header, err := auth.GetBearerHeader(challenge(), imageRef, "")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(header).To(Equal("Bearer abc"))
+		})
+		It("should accept an access_token instead of a token", func() {
+			response = `{"access_token":"def"}`
+			header, err := auth.GetBearerHeader(challenge(), imageRef, "")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(header).To(Equal("Bearer def"))
+		})
+		It("should fail when the token service rejects the request", func() {
+			status = http.StatusUnauthorized
+			response = `{"errors":[]}`
+			_, err := auth.GetBearerHeader(challenge(), imageRef, "")
+			Expect(err).To(MatchError(ContainSubstring("401 Unauthorized")))
+		})
+		It("should fail when no token is returned", func() {
+			response = `{}`
+			_, err := auth.GetBearerHeader(challenge(), imageRef, "")
+			Expect(err).To(MatchError(ContainSubstring("did not include a token")))
+		})
+		It("should not send credentials to a token service without HTTPS", func() {
+			_, err := auth.GetBearerHeader(challenge(), imageRef, "dXNlcjpwYXNz")
+			Expect(err).To(MatchError(ContainSubstring("does not use HTTPS")))
+			Expect(requests).To(Equal(0))
 		})
 	})
 
