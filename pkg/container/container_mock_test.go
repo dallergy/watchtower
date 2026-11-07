@@ -76,3 +76,9 @@ func WithImageHealthcheck(healthConfig dockerContainer.HealthConfig) MockContain
 		img.Config.Healthcheck = &healthConfig
 	}
 }
+
+func WithAutoRemove() MockContainerUpdate {
+	return func(cnt *dockerContainer.InspectResponse, img *image.InspectResponse) {
+		cnt.HostConfig.AutoRemove = true
+	}
+}

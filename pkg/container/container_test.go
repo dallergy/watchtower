@@ -235,6 +235,18 @@ var _ = Describe("the container", func() {
 				stopSignal := c.StopSignal()
 				Expect(stopSignal).To(Equal(""))
 			})
+			It("should fall back to the stop signal of the container", func() {
+				c = MockContainer(WithLabels(map[string]string{}))
+				c.containerInfo.Config.StopSignal = "SIGQUIT"
+				Expect(c.StopSignal()).To(Equal("SIGQUIT"))
+			})
+			It("should prefer the label over the stop signal of the container", func() {
+				c = MockContainer(WithLabels(map[string]string{
+					"com.centurylinklabs.watchtower.stop-signal": "SIGHUP",
+				}))
+				c.containerInfo.Config.StopSignal = "SIGQUIT"
+				Expect(c.StopSignal()).To(Equal("SIGHUP"))
+			})
 		})
 		When("fetching the image name", func() {
 			When("the zodiac label is present", func() {

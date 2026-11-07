@@ -1,6 +1,9 @@
 package container
 
 import (
+	"regexp"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/dallergy/watchtower/internal/util"
@@ -93,6 +96,73 @@ var _ = Describe("the client", func() {
 				Expect(dockerClient{api: docker}.StopContainer(container, time.Minute)).To(Succeed())
 			})
 		})
+		When("the container is removed automatically after stopping", func() {
+			It("should wait for the daemon to remove it", func() {
+				container := MockContainer(WithContainerState(dc.State{Running: true}), WithAutoRemove())
+				containerStopped := MockContainer(WithContainerState(dc.State{Running: false}), WithAutoRemove())
+
+				cid := container.ContainerInfo().ID
+				mockServer.AppendHandlers(
+					mocks.KillContainerHandler(cid, mocks.Found),
+					mocks.GetContainerHandler(cid, containerStopped.ContainerInfo()),
+					// still being removed
+					mocks.GetContainerHandler(cid, containerStopped.ContainerInfo()),
+					mocks.GetContainerHandler(cid, nil),
+				)
+
+				Expect(dockerClient{api: docker}.StopContainer(container, time.Minute)).To(Succeed())
+				Expect(mockServer.ReceivedRequests()).To(HaveLen(4))
+			})
+		})
+		When("an automatically removed container ignores the stop signal", func() {
+			It("should kill it", func() {
+				container := MockContainer(WithContainerState(dc.State{Running: true}), WithAutoRemove())
+				cid := container.ContainerInfo().ID
+
+				var killed atomic.Bool
+				var signals []string
+				var mu sync.Mutex
+				mockServer.RouteToHandler("POST", regexp.MustCompile("/containers/"+cid+"/kill$"), func(w http.ResponseWriter, r *http.Request) {
+					mu.Lock()
+					signals = append(signals, r.URL.Query().Get("signal"))
+					mu.Unlock()
+					if r.URL.Query().Get("signal") == "SIGKILL" {
+						killed.Store(true)
+					}
+					w.WriteHeader(http.StatusNoContent)
+				})
+				mockServer.RouteToHandler("GET", regexp.MustCompile("/containers/"+cid+"/json$"), func(w http.ResponseWriter, r *http.Request) {
+					if killed.Load() {
+						mocks.GetContainerHandler(cid, nil)(w, r)
+						return
+					}
+					ghttp.RespondWithJSONEncoded(http.StatusOK, container.ContainerInfo())(w, r)
+				})
+
+				Expect(dockerClient{api: docker}.StopContainer(container, 1500*time.Millisecond)).To(Succeed())
+				mu.Lock()
+				defer mu.Unlock()
+				Expect(signals).To(Equal([]string{"SIGTERM", "SIGKILL"}))
+			})
+		})
+		When("the container has its own stop signal", func() {
+			It("should stop it with that signal", func() {
+				container := MockContainer(WithContainerState(dc.State{Running: true}))
+				container.containerInfo.Config.StopSignal = "SIGQUIT"
+				cid := container.ContainerInfo().ID
+
+				mockServer.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("POST", HaveSuffix("containers/%s/kill", cid), "signal=SIGQUIT"),
+						ghttp.RespondWith(http.StatusNoContent, nil),
+					),
+					mocks.GetContainerHandler(cid, nil),
+					mocks.RemoveContainerHandler(cid, mocks.Missing),
+				)
+
+				Expect(dockerClient{api: docker}.StopContainer(container, time.Minute)).To(Succeed())
+			})
+		})
 		When("the container does not exist after stopping", func() {
 			It("should not cause an error", func() {
 				container := MockContainer(WithContainerState(dc.State{Running: true}))
@@ -151,6 +221,20 @@ var _ = Describe("the client", func() {
 				containers, err := client.ListContainers(filters.NoFilter)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(containers).To(HaveLen(2))
+			})
+		})
+		When("a container is removed while listing", func() {
+			It("should skip it instead of failing", func() {
+				mockServer.AppendHandlers(mocks.ListContainersHandler("running"))
+				mockServer.AppendHandlers(mocks.GetContainerHandler(string(mocks.Watchtower.ContainerID()), nil))
+				mockServer.AppendHandlers(mocks.GetContainerHandlers(&mocks.Running)...)
+				client := dockerClient{
+					api:           docker,
+					ClientOptions: ClientOptions{},
+				}
+				containers, err := client.ListContainers(filters.NoFilter)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(containers).To(HaveLen(1))
 			})
 		})
 		When("a filter matching nothing", func() {

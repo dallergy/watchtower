@@ -3,6 +3,7 @@ package container
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -119,6 +120,11 @@ func (client dockerClient) ListContainers(fn t.Filter) ([]t.Container, error) {
 	for _, runningContainer := range containers.Items {
 
 		c, err := client.GetContainer(t.ContainerID(runningContainer.ID))
+		if cerrdefs.IsNotFound(err) {
+			// The container was removed after it was listed, e.g. a short-lived --rm container
+			log.Debugf("Container %s disappeared while listing, skipping it", t.ContainerID(runningContainer.ID).ShortID())
+			continue
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -203,6 +209,13 @@ func (client dockerClient) StopContainer(c t.Container, timeout time.Duration) e
 
 	if c.ContainerInfo().HostConfig.AutoRemove {
 		log.Debugf("AutoRemove container %s, skipping ContainerRemove call.", shortID)
+		// The daemon only removes the container once it has stopped, so kill it when it ignored the stop signal
+		if inspect, err := client.api.ContainerInspect(bg, idStr, sdkClient.ContainerInspectOptions{}); err == nil && inspect.Container.State.Running {
+			log.Infof("Killing %s (%s), as it did not stop within %v", c.Name(), shortID, timeout)
+			if _, err := client.api.ContainerKill(bg, idStr, sdkClient.ContainerKillOptions{Signal: "SIGKILL"}); err != nil && !cerrdefs.IsNotFound(err) && !cerrdefs.IsConflict(err) {
+				return err
+			}
+		}
 	} else {
 		log.Debugf("Removing container %s", shortID)
 
@@ -215,9 +228,9 @@ func (client dockerClient) StopContainer(c t.Container, timeout time.Duration) e
 		}
 	}
 
-	// Wait for container to be removed. In this case an error is a good thing
-	if err := client.waitForStopOrTimeout(c, timeout); err == nil {
-		return fmt.Errorf("container %s (%s) could not be removed", c.Name(), shortID)
+	// Auto-removed containers are removed by the daemon after they stop, which takes a moment
+	if err := client.waitForRemovalOrTimeout(c, timeout); err != nil {
+		return fmt.Errorf("container %s (%s) could not be removed: %w", c.Name(), shortID, err)
 	}
 
 	return nil
@@ -559,6 +572,25 @@ func (client dockerClient) waitForExecOrTimeout(bg context.Context, ID string, o
 		break
 	}
 	return false, nil
+}
+
+func (client dockerClient) waitForRemovalOrTimeout(c t.Container, waitTime time.Duration) error {
+	bg := context.Background()
+	deadline := time.Now().Add(waitTime)
+
+	for {
+		_, err := client.api.ContainerInspect(bg, string(c.ID()), sdkClient.ContainerInspectOptions{})
+		if cerrdefs.IsNotFound(err) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if time.Now().After(deadline) {
+			return errors.New("it still exists")
+		}
+		time.Sleep(1 * time.Second)
+	}
 }
 
 func (client dockerClient) waitForStopOrTimeout(c t.Container, waitTime time.Duration) error {
