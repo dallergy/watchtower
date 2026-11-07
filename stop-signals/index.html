@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../images/favicon.ico">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
     
     
       
@@ -31,10 +31,10 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -982,8 +982,11 @@
 
   <h1>Stop signals</h1>
 
-<p>When watchtower detects that a running container needs to be updated it will stop the container by sending it a SIGTERM signal.
-If your container should be shutdown with a different signal you can communicate this to watchtower by setting a label named <em>com.centurylinklabs.watchtower.stop-signal</em> with the value of the desired signal.</p>
+<p>When watchtower detects that a running container needs to be updated it will stop the container by sending it the
+stop signal configured for the container, using <code>STOPSIGNAL</code> in its Dockerfile or <code>--stop-signal</code> when it was started, or
+SIGTERM when none is configured. Containers that have not stopped when the <a href="../arguments/#wait_until_timeout">stop timeout</a>
+expires are killed.</p>
+<p>If your container should be shutdown with a different signal you can communicate this to watchtower by setting a label named <em>com.centurylinklabs.watchtower.stop-signal</em> with the value of the desired signal.</p>
 <p>This label can be coded directly into your image by using the <code>LABEL</code> instruction in your Dockerfile:</p>
 <div class="highlight"><pre><span></span><code><span class="k">LABEL</span><span class="w"> </span>com.centurylinklabs.watchtower.stop-signal<span class="o">=</span><span class="s2">"SIGHUP"</span>
 </code></pre></div>
@@ -1093,10 +1096,10 @@ If your container should be shutdown with a different signal you can communicate
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "content.tabs.link", "navigation.footer", "navigation.instant", "navigation.instant.progress", "navigation.sections", "navigation.top", "navigation.tracking", "search.highlight", "search.suggest", "toc.follow"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "content.tabs.link", "navigation.footer", "navigation.instant", "navigation.instant.progress", "navigation.sections", "navigation.top", "navigation.tracking", "search.highlight", "search.suggest", "toc.follow"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
     
   </body>

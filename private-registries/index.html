@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../images/favicon.ico">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
     
     
       
@@ -31,10 +31,10 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -725,6 +725,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#registries_with_self-signed_certificates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registries with self-signed certificates
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#credential_helpers" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1115,6 +1126,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#registries_with_self-signed_certificates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registries with self-signed certificates
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#credential_helpers" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1252,6 +1274,23 @@ Example usage:</p>
 <span class="w">    </span><span class="nt">volumes</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/etc/watchtower/config/:/config/</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/var/run/docker.sock:/var/run/docker.sock</span>
+</code></pre></div>
+<h2 id="registries_with_self-signed_certificates">Registries with self-signed certificates<a class="headerlink" href="#registries_with_self-signed_certificates" title="Permanent link">&para;</a></h2>
+<p>Before pulling, Watchtower asks the registry for the digest of the latest image, sending your
+credentials along. These requests always verify the registry's TLS certificate. When the certificate
+is not trusted, Watchtower falls back to a regular pull through the Docker daemon, which uses the
+daemon's own certificate configuration.</p>
+<p>To let Watchtower check digests of a registry with a private certificate authority, mount the CA
+certificate into the container and point <code>SSL_CERT_FILE</code> (a bundle) or <code>SSL_CERT_DIR</code> (a directory of
+certificates) at it:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">services</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">watchtower</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">shounak6942/watchtower</span>
+<span class="w">    </span><span class="nt">volumes</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/var/run/docker.sock:/var/run/docker.sock</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./registry-ca.crt:/etc/ssl/certs/registry-ca.crt:ro</span>
+<span class="w">    </span><span class="nt">environment</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">SSL_CERT_DIR</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/etc/ssl/certs</span>
 </code></pre></div>
 <h2 id="credential_helpers">Credential helpers<a class="headerlink" href="#credential_helpers" title="Permanent link">&para;</a></h2>
 <p>Some private Docker registries (the most prominent probably being AWS ECR) use non-standard ways of authentication.
@@ -1456,10 +1495,10 @@ docker<span class="w"> </span>run<span class="w">  </span>-d<span class="w"> </s
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "content.tabs.link", "navigation.footer", "navigation.instant", "navigation.instant.progress", "navigation.sections", "navigation.top", "navigation.tracking", "search.highlight", "search.suggest", "toc.follow"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "content.tabs.link", "navigation.footer", "navigation.instant", "navigation.instant.progress", "navigation.sections", "navigation.top", "navigation.tracking", "search.highlight", "search.suggest", "toc.follow"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
     
   </body>
