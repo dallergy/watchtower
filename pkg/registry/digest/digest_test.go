@@ -121,5 +121,14 @@ var _ = Describe("Digests", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(dig).To(Equal(mockDigest))
 		})
+		It("should not send credentials to a registry with an untrusted certificate", func() {
+			tlsServer := ghttp.NewTLSServer()
+			defer tlsServer.Close()
+			tlsServer.AllowUnhandledRequests = true
+
+			_, err := digest.GetDigest(tlsServer.URL(), "Basic dXNlcjpwYXNz")
+			Expect(err).To(MatchError(ContainSubstring("certificate")))
+			Expect(tlsServer.ReceivedRequests()).To(BeEmpty())
+		})
 	})
 })

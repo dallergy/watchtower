@@ -18,6 +18,9 @@ import (
 // ChallengeHeader is the HTTP Header containing challenge instructions
 const ChallengeHeader = "WWW-Authenticate"
 
+// maxTokenResponseSize limits how much of a token response is read
+const maxTokenResponseSize = 1 << 20
+
 // GetToken fetches a token for the registry hosting the provided image
 func GetToken(container types.Container, registryAuth string) (string, error) {
 	normalizedRef, err := ref.ParseNormalizedNamed(container.ImageName())
@@ -33,12 +36,11 @@ func GetToken(container types.Container, registryAuth string) (string, error) {
 		return "", err
 	}
 
-	client := &http.Client{}
 	var res *http.Response
-	if res, err = client.Do(req); err != nil {
+	if res, err = helpers.HTTPClient().Do(req); err != nil {
 		return "", err
 	}
-	defer func() { _ = res.Body.Close() }()
+	_ = res.Body.Close()
 	v := res.Header.Get(ChallengeHeader)
 
 	logrus.WithFields(logrus.Fields{
@@ -46,16 +48,15 @@ func GetToken(container types.Container, registryAuth string) (string, error) {
 		"header": v,
 	}).Debug("Got response to challenge request")
 
-	challenge := strings.ToLower(v)
-	if strings.HasPrefix(challenge, "basic") {
+	scheme, _ := parseChallenge(v)
+	switch scheme {
+	case "basic":
 		if registryAuth == "" {
 			return "", fmt.Errorf("no credentials available")
 		}
-
 		return fmt.Sprintf("Basic %s", registryAuth), nil
-	}
-	if strings.HasPrefix(challenge, "bearer") {
-		return GetBearerHeader(challenge, normalizedRef, registryAuth)
+	case "bearer":
+		return GetBearerHeader(v, normalizedRef, registryAuth)
 	}
 
 	return "", errors.New("unsupported challenge type from registry")
@@ -74,7 +75,6 @@ func GetChallengeRequest(URL url.URL) (*http.Request, error) {
 
 // GetBearerHeader tries to fetch a bearer token from the registry based on the challenge instructions
 func GetBearerHeader(challenge string, imageRef ref.Named, registryAuth string) (string, error) {
-	client := http.Client{}
 	authURL, err := GetAuthURL(challenge, imageRef)
 
 	if err != nil {
@@ -87,6 +87,9 @@ func GetBearerHeader(challenge string, imageRef ref.Named, registryAuth string) 
 	}
 
 	if registryAuth != "" {
+		if authURL.Scheme != "https" {
+			return "", fmt.Errorf("refusing to send registry credentials to the token service at %s, as it does not use HTTPS", authURL.Host)
+		}
 		logrus.Debug("Credentials found.")
 		// CREDENTIAL: Uncomment to log registry credentials
 		// logrus.Tracef("Credentials: %v", registryAuth)
@@ -96,47 +99,56 @@ func GetBearerHeader(challenge string, imageRef ref.Named, registryAuth string) 
 	}
 
 	var authResponse *http.Response
-	if authResponse, err = client.Do(r); err != nil {
+	if authResponse, err = helpers.HTTPClient().Do(r); err != nil {
 		return "", err
 	}
+	defer func() { _ = authResponse.Body.Close() }()
 
-	body, _ := io.ReadAll(authResponse.Body)
-	tokenResponse := &types.TokenResponse{}
-
-	err = json.Unmarshal(body, tokenResponse)
+	body, err := io.ReadAll(io.LimitReader(authResponse.Body, maxTokenResponseSize))
 	if err != nil {
 		return "", err
 	}
+	if authResponse.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("token request to %s failed with %s", authURL.Host, authResponse.Status)
+	}
 
-	return fmt.Sprintf("Bearer %s", tokenResponse.Token), nil
+	tokenResponse := &types.TokenResponse{}
+	if err = json.Unmarshal(body, tokenResponse); err != nil {
+		return "", fmt.Errorf("failed to parse the token response from %s: %w", authURL.Host, err)
+	}
+
+	token := tokenResponse.Token
+	if token == "" {
+		token = tokenResponse.AccessToken
+	}
+	if token == "" {
+		return "", fmt.Errorf("the token response from %s did not include a token", authURL.Host)
+	}
+
+	return fmt.Sprintf("Bearer %s", token), nil
 }
 
 // GetAuthURL from the instructions in the challenge
 func GetAuthURL(challenge string, imageRef ref.Named) (*url.URL, error) {
-	loweredChallenge := strings.ToLower(challenge)
-	raw := strings.TrimPrefix(loweredChallenge, "bearer")
+	_, values := parseChallenge(challenge)
 
-	pairs := strings.Split(raw, ",")
-	values := make(map[string]string, len(pairs))
-
-	for _, pair := range pairs {
-		trimmed := strings.Trim(pair, " ")
-		if key, val, ok := strings.Cut(trimmed, "="); ok {
-			values[key] = strings.Trim(val, `"`)
-		}
-	}
 	logrus.WithFields(logrus.Fields{
 		"realm":   values["realm"],
 		"service": values["service"],
 	}).Debug("Checking challenge header content")
-	if values["realm"] == "" || values["service"] == "" {
-
-		return nil, fmt.Errorf("challenge header did not include all values needed to construct an auth url")
+	if values["realm"] == "" {
+		return nil, fmt.Errorf("challenge header did not include a realm to request a token from")
 	}
 
-	authURL, _ := url.Parse(values["realm"])
+	authURL, err := url.Parse(values["realm"])
+	if err != nil || authURL.Host == "" {
+		return nil, fmt.Errorf("challenge header included an invalid realm %q", values["realm"])
+	}
 	q := authURL.Query()
-	q.Add("service", values["service"])
+	// The service is optional, see https://distribution.github.io/distribution/spec/auth/token/
+	if service := values["service"]; service != "" {
+		q.Add("service", service)
+	}
 
 	scopeImage := ref.Path(imageRef)
 
@@ -159,4 +171,50 @@ func GetChallengeURL(imageRef ref.Named) url.URL {
 		Path:   "/v2/",
 	}
 	return URL
+}
+
+// parseChallenge splits a WWW-Authenticate header into its lower-cased scheme and its parameters.
+// Parameter names are lower-cased, while their values are kept as is, as realms are URLs.
+func parseChallenge(header string) (scheme string, params map[string]string) {
+	scheme, rest, _ := strings.Cut(strings.TrimSpace(header), " ")
+	params = map[string]string{}
+
+	for {
+		rest = strings.TrimLeft(rest, " ,")
+		separator := strings.IndexAny(rest, "=,")
+		if separator < 0 {
+			break
+		}
+		if rest[separator] == ',' {
+			// a parameter without a value
+			rest = rest[separator+1:]
+			continue
+		}
+
+		key := strings.ToLower(strings.TrimSpace(rest[:separator]))
+		rest = strings.TrimLeft(rest[separator+1:], " ")
+
+		var value strings.Builder
+		if strings.HasPrefix(rest, `"`) {
+			// a quoted string, which may contain commas and escaped characters
+			i := 1
+			for ; i < len(rest) && rest[i] != '"'; i++ {
+				if rest[i] == '\\' && i+1 < len(rest) {
+					i++
+				}
+				value.WriteByte(rest[i])
+			}
+			rest = rest[min(i+1, len(rest)):]
+		} else {
+			end := strings.IndexByte(rest, ',')
+			if end < 0 {
+				end = len(rest)
+			}
+			value.WriteString(strings.TrimSpace(rest[:end]))
+			rest = rest[end:]
+		}
+		params[key] = value.String()
+	}
+
+	return strings.ToLower(scheme), params
 }

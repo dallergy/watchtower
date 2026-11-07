@@ -1,18 +1,16 @@
 package digest
 
 import (
-	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/dallergy/watchtower/internal/meta"
 	"github.com/dallergy/watchtower/pkg/registry/auth"
+	"github.com/dallergy/watchtower/pkg/registry/helpers"
 	"github.com/dallergy/watchtower/pkg/registry/manifest"
 	"github.com/dallergy/watchtower/pkg/types"
 	"github.com/sirupsen/logrus"
@@ -47,7 +45,10 @@ func CompareDigest(container types.Container, registryAuth string) (bool, error)
 	logrus.WithField("remote", digest).Debug("Found a remote digest to compare with")
 
 	for _, dig := range container.ImageInfo().RepoDigests {
-		localDigest := strings.Split(dig, "@")[1]
+		_, localDigest, found := strings.Cut(dig, "@")
+		if !found {
+			continue
+		}
 		fields := logrus.Fields{"local": localDigest, "remote": digest}
 		logrus.WithFields(fields).Debug("Comparing")
 
@@ -76,22 +77,10 @@ func TransformAuth(registryAuth string) string {
 
 // GetDigest from registry using a HEAD request to prevent rate limiting
 func GetDigest(url string, token string) (string, error) {
-	tr := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).DialContext,
-		ForceAttemptHTTP2:     true,
-		MaxIdleConns:          100,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-		TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
+	req, err := http.NewRequest(http.MethodHead, url, nil)
+	if err != nil {
+		return "", err
 	}
-	client := &http.Client{Transport: tr}
-
-	req, _ := http.NewRequest("HEAD", url, nil)
 	req.Header.Set("User-Agent", meta.UserAgent)
 
 	if token == "" {
@@ -106,10 +95,12 @@ func GetDigest(url string, token string) (string, error) {
 	req.Header.Add("Accept", "application/vnd.docker.distribution.manifest.list.v2+json")
 	req.Header.Add("Accept", "application/vnd.docker.distribution.manifest.v1+json")
 	req.Header.Add("Accept", "application/vnd.oci.image.index.v1+json")
+	req.Header.Add("Accept", "application/vnd.oci.image.manifest.v1+json")
 
 	logrus.WithField("url", url).Debug("Doing a HEAD request to fetch a digest")
 
-	res, err := client.Do(req)
+	// The certificate must be verified, as the request carries the registry credentials
+	res, err := helpers.HTTPClient().Do(req)
 	if err != nil {
 		return "", err
 	}

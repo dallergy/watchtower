@@ -258,11 +258,17 @@ func (c Container) PostUpdateTimeout() int {
 	return minutes
 }
 
-// StopSignal returns the custom stop signal (if any) that is encoded in the
-// container's metadata. If the container has not specified a custom stop
-// signal, the empty string "" is returned.
+// StopSignal returns the signal used to stop the container: the stop signal label if set,
+// otherwise the stop signal configured for the container itself (using STOPSIGNAL or
+// --stop-signal). If neither is set, the empty string "" is returned.
 func (c Container) StopSignal() string {
-	return c.getLabelValueOrEmpty(signalLabel)
+	if signal := c.getLabelValueOrEmpty(signalLabel); signal != "" {
+		return signal
+	}
+	if c.containerInfo != nil && c.containerInfo.Config != nil {
+		return c.containerInfo.Config.StopSignal
+	}
+	return ""
 }
 
 // GetCreateConfig returns the container's current Config converted into a format

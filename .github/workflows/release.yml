@@ -8,8 +8,7 @@ on:
       - '**/v[0-9]+.[0-9]+.[0-9]+'
 
 permissions:
-  contents: write
-  packages: write
+  contents: read
 
 jobs:
   lint:
@@ -52,6 +51,10 @@ jobs:
     needs:
       - test
       - lint
+    permissions:
+      # publish the GitHub release and the GHCR images
+      contents: write
+      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@v7

@@ -109,6 +109,28 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
 ```
 
+## Registries with self-signed certificates
+
+Before pulling, Watchtower asks the registry for the digest of the latest image, sending your
+credentials along. These requests always verify the registry's TLS certificate. When the certificate
+is not trusted, Watchtower falls back to a regular pull through the Docker daemon, which uses the
+daemon's own certificate configuration.
+
+To let Watchtower check digests of a registry with a private certificate authority, mount the CA
+certificate into the container and point `SSL_CERT_FILE` (a bundle) or `SSL_CERT_DIR` (a directory of
+certificates) at it:
+
+```yaml
+services:
+  watchtower:
+    image: shounak6942/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./registry-ca.crt:/etc/ssl/certs/registry-ca.crt:ro
+    environment:
+      SSL_CERT_DIR: /etc/ssl/certs
+```
+
 ## Credential helpers
 Some private Docker registries (the most prominent probably being AWS ECR) use non-standard ways of authentication.
 To be able to use this together with watchtower, we need to use a credential helper.

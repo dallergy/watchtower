@@ -118,7 +118,7 @@ func newHTTPAppriseRouter(appriseURL, appriseKey string, urls []string) *httpApp
 	}
 
 	return &httpAppriseRouter{
-		client:     &http.Client{Timeout: 30 * time.Second},
+		client:     &http.Client{Timeout: 30 * time.Second, CheckRedirect: apprise.SameHostRedirects},
 		notifyURL:  notifyURL,
 		urls:       urls,
 		useKeyMode: appriseKey != "",
